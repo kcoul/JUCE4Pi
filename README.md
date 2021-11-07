@@ -21,8 +21,6 @@ Raspberry Pi / Linux
 #Raspberry Pi
 
 sudo apt install pigpio
-wget -O Findpigpio.cmake https://raw.githubusercontent.com/joan2937/pigpio/master/util/Findpigpio.cmake
-sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
 ```
 
 #Linux
@@ -32,5 +30,3 @@ unzip master.zip
 cd pigpio-master
 make
 sudo make install
-wget -O Findpigpio.cmake https://raw.githubusercontent.com/joan2937/pigpio/master/util/Findpigpio.cmake
-sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
