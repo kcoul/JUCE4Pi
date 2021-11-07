@@ -26,6 +26,7 @@ sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
 ```
 
 #Linux
+
 wget https://github.com/joan2937/pigpio/archive/master.zip
 unzip master.zip
 cd pigpio-master
