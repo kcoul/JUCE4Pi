@@ -15,10 +15,11 @@ libwebkit2gtk-4.0-dev \
 libglu1-mesa-dev mesa-common-dev
 ```
 
-Raspberry Pi
+Raspberry Pi only
 
 ````console
 sudo apt install pigpio
 wget -O Findpigpio.cmake https://raw.githubusercontent.com/joan2937/pigpio/master/util/Findpigpio.cmake
 sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
-```
+
+
