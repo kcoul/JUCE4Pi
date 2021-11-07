@@ -21,5 +21,3 @@ Raspberry Pi only
 sudo apt install pigpio
 wget -O Findpigpio.cmake https://raw.githubusercontent.com/joan2937/pigpio/master/util/Findpigpio.cmake
 sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
-
-
