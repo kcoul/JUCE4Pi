@@ -2,6 +2,7 @@
 Resources for JUCE-based audio development on the Raspberry Pi
 
 ```console
+git clone https://github.com/juce-framework/JUCE.git
 sudo apt update
 sudo apt install cmake
 sudo apt install clang
