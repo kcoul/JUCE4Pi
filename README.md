@@ -1,6 +1,8 @@
 # JUCE4Pi
 Resources for JUCE-based audio development on the Raspberry Pi
 
+Raspberry Pi / Linux
+
 ```console
 git clone https://github.com/juce-framework/JUCE.git
 sudo apt update
@@ -15,8 +17,6 @@ libxinerama-dev libxrandr-dev libxrender-dev \
 libwebkit2gtk-4.0-dev \
 libglu1-mesa-dev mesa-common-dev
 ```
-
-Raspberry Pi / Linux
 
 ````console
 #Raspberry Pi
