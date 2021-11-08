@@ -22,7 +22,6 @@ libglu1-mesa-dev mesa-common-dev
 #Raspberry Pi
 
 sudo apt install pigpio
-```
 
 #Linux
 
