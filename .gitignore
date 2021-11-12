@@ -1,32 +1,42 @@
-# Prerequisites
-*.d
+*.user
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+SDKs
 
-# Precompiled Headers
-*.gch
-*.pch
+build
+build-ios
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+cmake-build
+cmake-build-debug
+cmake-build-release
+cmake-build-relwithdebinfo
+cmake-build-debug-remote-pi
+cmake-build-release-remote-pi
+cmake-build-relwithdebinfo-remote-pi
+cmake-build-debug-visual-studio
+cmake-build-release-visual-studio
+cmake-build-relwithdebinfo-visual-studio
 
-# Fortran module files
-*.mod
-*.smod
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
+CMakeScripts
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+.idea
 
-# Executables
-*.exe
-*.out
-*.app
+IDEWorkspaceChecks.plist
+UserInterfaceState.xcuserstate
+xcschememanagement.plist
+*.xcscheme
+.vscode
+*.xcworkspace
+*.DS_Store
+*.entitlements
+*.cpb
+Makefile
+
+workspace.xml
+xcuserdata
+/Apps/SerumStandAlone/Builds/MacOSX/RecentFilesMenuTemplate.nib
+
+#in-source JUCE copy
+**/JUCE/

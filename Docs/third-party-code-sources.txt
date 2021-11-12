@@ -1,0 +1,23 @@
+pigpio 
+https://abyz.me.uk/rpi/pigpio/
+
+CMake Template
+https://github.com/eyalamirmusic/JUCECmakeRepoPrototype
+
+ModMate
+https://github.com/pluginguru/ModMate
+
+Hack Audio GUI
+https://github.com/HackAudio/hack_audio_gui
+
+FF Meters
+https://github.com/ffAudio/ff_meters
+
+Reverb
+https://github.com/szkkng/SimpleReverb
+
+Lush Delay
+https://github.com/spensbot/Lush-Delay
+
+Lush Delay Dependencies
+https://github.com/spensbot/stm-juce-modules

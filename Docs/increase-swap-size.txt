@@ -1,0 +1,16 @@
+sudo dphys-swapfile swapoff
+
+sudo nano /etc/dphys-swapfile
+
+#REPLACE
+CONF_SWAPSIZE=100
+
+#WITH (at minimum)
+CONF_SWAPSIZE=512
+
+#Ctrl+O, Ctrl+W
+
+sudo dphys-swapfile setup
+sudo dphys-swapfile swapon
+
+sudo reboot -h now

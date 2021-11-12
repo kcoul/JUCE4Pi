@@ -1,0 +1,29 @@
+amixer -c0 sget 'ADC Mic Bias'
+
+amixer -c0 sset "ADC Mic Bias" "Mic Bias on"
+amixer -c0 sset "ADC Mic Bias" "Mic Bias off"
+
+amixer -c0 sget "ADC Left Input"
+amixer -c0 sget "ADC Right Input"
+
+amixer -c0 sset "ADC Left Input" "{VIN1P, VIN1M}[DIFF]"
+amixer -c0 sset "ADC Right Input" "{VIN2P, VIN2M}[DIFF]"
+
+amixer -c0 sset "ADC Left Input" "VINL1[SE]"
+amixer -c0 sset "ADC Right Input" "VINR2[SE]"
+
+
+
+amixer -c0 sget ADC
+
+//-12.0 db
+amixer -c0 sset ADC 0
+
+//40db
+amixer -c0 sset ADC 104
+
+
+amixer sget Master
+
+amixer -c0 sset Master 100%
+amixer -c0 sset Master 0%

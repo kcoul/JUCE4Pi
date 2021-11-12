@@ -1,0 +1,35 @@
+//General
+sudo raspi-config
+	Interface Options
+		SSH -> Enable SSH
+		
+sudo apt update
+
+//JUCE
+sudo apt install cmake
+sudo apt install libasound2-dev libjack-jackd2-dev \
+    ladspa-sdk \
+    libcurl4-openssl-dev  \
+    libfreetype6-dev \
+    libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev \
+    libwebkit2gtk-4.0-dev \
+    libglu1-mesa-dev mesa-common-dev
+
+//GPIO
+//Verify if already on OS
+sudo pigpiod
+
+//If not
+sudo apt install pigpio
+wget -O Findpigpio.cmake https://raw.githubusercontent.com/joan2937/pigpio/master/util/Findpigpio.cmake
+sudo cp ./Findpigpio.cmake /usr/share/cmake-3.16/Modules
+
+//Optional
+sudo dphys-swapfile swapoff
+sudo nano /etc/dphys-swapfile
+//Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=1024
+sudo dphys-swapfile setup
+sudo dphys-swapfile swapon
+
+//OnBoot (service seems to interfere with boot...?)
+sudo pigpiod
