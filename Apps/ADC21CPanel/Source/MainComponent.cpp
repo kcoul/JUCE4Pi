@@ -82,86 +82,86 @@ MainComponent::MainComponent()
     meter.setMeterSource (&meterSource);
     addAndMakeVisible (meter);
 
-#if JUCE_LINUX && USE_ALSA_API
-    snd_mixer_open(&handle, 0);
-    snd_mixer_attach(handle, card);
-    snd_mixer_selem_register(handle, NULL, NULL);
-    snd_mixer_load(handle);
+#if JUCE_LINUX
+    #if USE_ALSA_API
+        snd_mixer_open(&handle, 0);
+        snd_mixer_attach(handle, card);
+        snd_mixer_selem_register(handle, NULL, NULL);
+        snd_mixer_load(handle);
 
-    snd_mixer_selem_id_alloca(&sid);
-    snd_mixer_selem_id_set_index(sid, 0);
-    snd_mixer_selem_id_set_name(sid, selem_name);
-    elem = snd_mixer_find_selem(handle, sid);
-    if (elem)
-        snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+        snd_mixer_selem_id_alloca(&sid);
+        snd_mixer_selem_id_set_index(sid, 0);
+        snd_mixer_selem_id_set_name(sid, selem_name);
+        elem = snd_mixer_find_selem(handle, sid);
+        if (elem)
+            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
 
-    snd_mixer_selem_id_set_name(sid, selem_name_capture);
-    elem_capture = snd_mixer_find_selem(handle, sid);
-    if (elem_capture)
-        snd_mixer_selem_get_capture_volume_range(elem_capture, &min_capture, &max_capture);
-#endif
+        snd_mixer_selem_id_set_name(sid, selem_name_capture);
+        elem_capture = snd_mixer_find_selem(handle, sid);
+        if (elem_capture)
+            snd_mixer_selem_get_capture_volume_range(elem_capture, &min_capture, &max_capture);
+    #endif
 
-#if JUCE_LINUX && __arm__
-#if USE_PIGPIOD
-    pi = pigpio_start(optHost, optPort);
-    if (pi < 0)
-        std::cout << "Couldn't connect to pigpiod, did you forget to launch it?" << std::endl;
-    else
-    {
-        Callback<void(int)>::func = std::bind(&MainComponent::pigpiod_cbf, this, std::placeholders::_1);
-        void (*c_func)(int) = static_cast<decltype(c_func)>(Callback<void(int)>::callback);
-        renc = RED(pi, 24, 23, optMode, c_func);
-        RED_set_glitch_filter(renc, optGlitch);
+    #if __arm__
+        #if USE_PIGPIOD
+            pi = pigpio_start(optHost, optPort);
+            if (pi < 0)
+                std::cout << "Couldn't connect to pigpiod, did you forget to launch it?" << std::endl;
+            else
+            {
+                Callback<void(int)>::func = std::bind(&MainComponent::pigpiod_cbf, this, std::placeholders::_1);
+                void (*c_func)(int) = static_cast<decltype(c_func)>(Callback<void(int)>::callback);
+                renc = RED(pi, 24, 23, optMode, c_func);
+                RED_set_glitch_filter(renc, optGlitch);
 
-        set_mode(pi, BUTTON_PIN, PI_INPUT);
-        set_pull_up_down(pi, BUTTON_PIN, PI_PUD_UP);
+                set_mode(pi, BUTTON_PIN, PI_INPUT);
+                set_pull_up_down(pi, BUTTON_PIN, PI_PUD_UP);
 
-        Callback<void(int, unsigned int, unsigned int, uint32_t)>::func =
-            std::bind(&MainComponent::handleButton, this,
-                      std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3, std::placeholders::_4);
-        void (*c_func2)(int, unsigned int, unsigned int, uint32_t) =
-            static_cast<decltype(c_func2)>(Callback<void(int, unsigned int, unsigned int,
-                                                         uint32_t)>::callback);
-        callback(pi, BUTTON_PIN, EDGE, c_func2);
-        initialised_pigpio = true;
-    }
-#else
-    //https://github.com/joan2937/pigpio/issues/87
-    gpioCfgClock(5, 0, 0);
-    int ret = gpioInitialise();
-    if (ret < 0)
-    {
-        std::cout << "Couldn't initialise pigpio. Ret=" << ret << std::endl;
-    }
-    else
-    {
-        Callback<void(int)>::func = std::bind(&MainComponent::pigpio_cbf, this, std::placeholders::_1);
-        void (*c_func)(int) = static_cast<decltype(c_func)>(Callback<void(int)>::callback);
-        renc = std::make_unique<re_decoder>(24, 23, c_func);
+                Callback<void(int, unsigned int, unsigned int, uint32_t)>::func =
+                    std::bind(&MainComponent::handleButton, this,
+                              std::placeholders::_1, std::placeholders::_2,
+                              std::placeholders::_3, std::placeholders::_4);
+                void (*c_func2)(int, unsigned int, unsigned int, uint32_t) =
+                    static_cast<decltype(c_func2)>(Callback<void(int, unsigned int, unsigned int,
+                                                                 uint32_t)>::callback);
+                callback(pi, BUTTON_PIN, EDGE, c_func2);
+                initialised_pigpio = true;
+            }
+        #else
+            //pigpio clocking conflicts with sound card...
+            //https://github.com/joan2937/pigpio/issues/87
+            gpioCfgClock(5, 0, 0);
+            int ret = gpioInitialise();
+            if (ret < 0)
+            {
+                std::cout << "Couldn't initialise pigpio. Ret=" << ret << std::endl;
+            }
+            else
+            {
+                Callback<void(int)>::func = std::bind(&MainComponent::pigpio_cbf, this, std::placeholders::_1);
+                void (*c_func)(int) = static_cast<decltype(c_func)>(Callback<void(int)>::callback);
+                renc = std::make_unique<re_decoder>(24, 23, c_func);
 
-        gpioSetMode(TOP_BUTTON_PIN, PI_INPUT);
-        gpioSetPullUpDown(TOP_BUTTON_PIN, PI_PUD_UP);
+                gpioSetMode(TOP_BUTTON_PIN, PI_INPUT);
+                gpioSetPullUpDown(TOP_BUTTON_PIN, PI_PUD_UP);
 
-        Callback<void(int, int, uint32_t)>::func =
-            std::bind(&MainComponent::handleTopButton, this,
-                      std::placeholders::_1, std::placeholders::_2,
-                      std::placeholders::_3);
+                Callback<void(int, int, uint32_t)>::func =
+                    std::bind(&MainComponent::handleTopButton, this,
+                              std::placeholders::_1, std::placeholders::_2,
+                              std::placeholders::_3);
 
-        void (*c_func2)(int, int, uint32_t) =
-        static_cast<decltype(c_func2)>(Callback<void(int, int,
-                                                     uint32_t)>::callback);
-        gpioSetAlertFunc(TOP_BUTTON_PIN, c_func2);
+                void (*c_func2)(int, int, uint32_t) =
+                static_cast<decltype(c_func2)>(Callback<void(int, int,
+                                                             uint32_t)>::callback);
+                gpioSetAlertFunc(TOP_BUTTON_PIN, c_func2);
 
-        initialised_pigpio = true;
-    }
-#endif
+                initialised_pigpio = true;
+            }
+        #endif
+    #endif
 #endif
 
     setAudioChannels(2,2);
-
-    //It will take some more work before Linux/RPi can be auto-initialised, see below
-    //initialiseDevice();
 
 //Delay Init
     delayRange.setSkewForCentre(100.0f);
@@ -225,28 +225,30 @@ void MainComponent::enablePassthroughButtonClicked()
 MainComponent::~MainComponent()
 {
     shutdownAudio();
-#if USE_ALSA_API
-    snd_mixer_close(handle);
-#endif
 
-#if JUCE_LINUX && __arm__
-#if USE_PIGPIOD
-    if (initialised_pigpio)
-    {
-        RED_cancel(renc);
-        pigpio_stop(pi);
-    }
-#else
-    if (initialised_pigpio)
-    {
-        renc->re_cancel();
-        gpioTerminate();
-    }
+#if JUCE_LINUX
+    #if USE_ALSA_API
+        snd_mixer_close(handle);
+    #endif
+    #if __arm__
+        #if USE_PIGPIOD
+            if (initialised_pigpio)
+            {
+                RED_cancel(renc);
+                pigpio_stop(pi);
+            }
+        #else
+            if (initialised_pigpio)
+            {
+                renc->re_cancel();
+                gpioTerminate();
+            }
+        #endif
+    #endif
 #endif
-#endif
-
     meter.setLookAndFeel (nullptr);
 }
+
 #if JUCE_LINUX && __arm__
 #if USE_PIGPIOD
 void MainComponent::pigpiod_cbf(int way)
@@ -442,18 +444,20 @@ void MainComponent::parameterSliderChanged()
     double inputGainValueDecibels = parameterSlider.getValue();
     double inputGainValue = (inputGainValueDecibels + 12.0) * 2.0;
 
-#if JUCE_LINUX && __arm__
-    std::string command = "amixer -c0 sset ADC " + convertToStr(&inputGainValue) + "&";
-    system(command.c_str());
-#elif JUCE_LINUX && USE_ALSA_API
-    if (elem_capture)
-    {
-        long normalizedValue = (long) inputGainValue * max_capture / 100;
-        int retval = snd_mixer_selem_set_capture_volume_all(elem_capture, normalizedValue);
-        if (retval)
-            std::cout << retval << std::endl;
-    }
-#endif
+    #if JUCE_LINUX
+        #if __arm__
+            std::string command = "amixer -c0 sset ADC " + convertToStr(&inputGainValue) + "&";
+            system(command.c_str());
+        #elif USE_ALSA_API
+            if (elem_capture)
+            {
+                long normalizedValue = (long) inputGainValue * max_capture / 100;
+                int retval = snd_mixer_selem_set_capture_volume_all(elem_capture, normalizedValue);
+                if (retval)
+                    std::cout << retval << std::endl;
+            }
+        #endif
+    #endif
 #endif
 }
 
@@ -462,18 +466,18 @@ void MainComponent::topButtonClicked()
 #if FX_BOX
     enableReverb = topButton.getToggleState();
 #elif CPANEL
-#if JUCE_LINUX && __arm__
-    if (topButton.getToggleState())
-    {
-        std::string command = R"(amixer -c0 sset "ADC Left Input" "{VIN1P, VIN1M}[DIFF]" &)";
-        system(command.c_str());
-    }
-    else
-    {
-        std::string command = R"(amixer -c0 sset "ADC Left Input" "VINL1[SE]" &)";
-        system(command.c_str());
-    }
-#endif
+    #if JUCE_LINUX && __arm__
+        if (topButton.getToggleState())
+        {
+            std::string command = R"(amixer -c0 sset "ADC Left Input" "{VIN1P, VIN1M}[DIFF]" &)";
+            system(command.c_str());
+        }
+        else
+        {
+            std::string command = R"(amixer -c0 sset "ADC Left Input" "VINL1[SE]" &)";
+            system(command.c_str());
+        }
+    #endif
 #endif
 }
 
@@ -482,20 +486,20 @@ void MainComponent::bottomButtonClicked()
 #if FX_BOX
     enableDelay = bottomButton.getToggleState();
 #elif CPANEL
-#if JUCE_LINUX && __arm__
-    if (bottomButton.getToggleState())
-    {
-        std::string command = R"(amixer -c0 sset "ADC Right Input" "{VIN2P, VIN2M}[DIFF]" &)";
-        system(command.c_str());
-        channel2Enabled = true;
-    }
-    else
-    {
-        std::string command = R"(amixer -c0 sset "ADC Right Input" "VINR2[SE]" &)";
-        system(command.c_str());
-        channel2Enabled = false;
-    }
-#endif
+    #if JUCE_LINUX && __arm__
+        if (bottomButton.getToggleState())
+        {
+            std::string command = R"(amixer -c0 sset "ADC Right Input" "{VIN2P, VIN2M}[DIFF]" &)";
+            system(command.c_str());
+            channel2Enabled = true;
+        }
+        else
+        {
+            std::string command = R"(amixer -c0 sset "ADC Right Input" "VINR2[SE]" &)";
+            system(command.c_str());
+            channel2Enabled = false;
+        }
+    #endif
 #endif
 }
 
@@ -535,5 +539,4 @@ void MainComponent::settingsButtonClicked()
         selector.setVisible(false);
     }
 }
-
 } // namespace GuiApp

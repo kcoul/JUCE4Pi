@@ -11,26 +11,26 @@
 #define FX_BOX 1
 #define CPANEL 0
 
-#if JUCE_LINUX && USE_ALSA_API
-  #include <alsa/asoundlib.h>
-#endif
-
 #if JUCE_LINUX
-  #include <cstdlib>
-  #include <sstream>
-#endif
+    #include <cstdlib>
+    #include <sstream>
 
-#if JUCE_LINUX && __arm__
-  #if USE_PIGPIOD
-    extern "C"
-    {
-        #include "RED.h"
-    }
-    #include <pigpiod_if2.h>
-  #else
-    #include "rotary_encoder.hpp"
-    #include <pigpio.h>
-  #endif
+    #if USE_ALSA_API
+        #include <alsa/asoundlib.h>
+    #endif
+
+    #if __arm__
+        #if USE_PIGPIOD
+            extern "C"
+            {
+            #include "RED.h"
+            }
+            #include <pigpiod_if2.h>
+        #else
+            #include "rotary_encoder.hpp"
+            #include <pigpio.h>
+        #endif
+    #endif
 #endif
 
 namespace GuiApp
@@ -99,31 +99,10 @@ private:
     juce::Label bottomButtonLabel;
 
     foleys::LevelMeterLookAndFeel lnf;
-    // See foleys::LevelMeter::MeterFlags for options
     foleys::LevelMeter meter { foleys::LevelMeter::MeterFlags::Default };
     foleys::LevelMeterSource meterSource;
 
-#if JUCE_LINUX && __arm__
-    unsigned int TOP_BUTTON_PIN = 25;
-    #if USE_PIGPIOD
-        char *optHost   = NULL;
-        char *optPort   = NULL;
-        int optGlitch = 1000;
-        int optSeconds = 0;
-        int optMode = RED_MODE_DETENT;
-        int pi;
-        RED_t *renc;
-        unsigned int EDGE = 2;
-        void pigpiod_cbf(int way);
-        void handleTopButton(int pi, unsigned int gpio, unsigned int edge, uint32_t tick);
-        void handleBottomButton(int pi, unsigned int gpio, unsigned int edge, uint32_t tick);
-    #else
-        std::unique_ptr<re_decoder> renc;
-        void pigpio_cbf(int way);
-        void handleTopButton(int gpio, int edge, uint32_t tick);
-        void handleBottomButton(int gpio, int edge, uint32_t tick);
-    #endif
-
+#if JUCE_LINUX
     #if USE_ALSA_API
         snd_mixer_t *handle;
         const char *card = "default";
@@ -137,6 +116,28 @@ private:
         snd_mixer_selem_id_t *sid_capture;
         const char *selem_name_capture = "Capture";
         snd_mixer_elem_t* elem_capture;
+    #endif
+
+    #if __arm__
+        unsigned int TOP_BUTTON_PIN = 25;
+        #if USE_PIGPIOD
+            char *optHost   = NULL;
+            char *optPort   = NULL;
+            int optGlitch = 1000;
+            int optSeconds = 0;
+            int optMode = RED_MODE_DETENT;
+            int pi;
+            RED_t *renc;
+            unsigned int EDGE = 2;
+            void pigpiod_cbf(int way);
+            void handleTopButton(int pi, unsigned int gpio, unsigned int edge, uint32_t tick);
+            void handleBottomButton(int pi, unsigned int gpio, unsigned int edge, uint32_t tick);
+        #else
+            std::unique_ptr<re_decoder> renc;
+            void pigpio_cbf(int way);
+            void handleTopButton(int gpio, int edge, uint32_t tick);
+            void handleBottomButton(int gpio, int edge, uint32_t tick);
+        #endif
     #endif
 #endif
 
