@@ -1,23 +1,36 @@
-pigpio 
+JUCE
+The JUCE Team
+https://github.com/juce-framework
+
+pigpio
+36 Contributors
+https://github.com/joan2937/pigpio 
 https://abyz.me.uk/rpi/pigpio/
 
-CMake Template
+JUCE CMake Repo Template
+Eyal Amir
 https://github.com/eyalamirmusic/JUCECmakeRepoPrototype
 
 ModMate
+Shane Dunne
 https://github.com/pluginguru/ModMate
 
 Hack Audio GUI
+Antonio Lassandro
 https://github.com/HackAudio/hack_audio_gui
 
 FF Meters
+Daniel Walz
 https://github.com/ffAudio/ff_meters
 
-Reverb
+Simple Reverb
+Suzuki Kengo
 https://github.com/szkkng/SimpleReverb
 
 Lush Delay
+Spenser Saling
 https://github.com/spensbot/Lush-Delay
 
 Lush Delay Dependencies
+Spenser Saling
 https://github.com/spensbot/stm-juce-modules
