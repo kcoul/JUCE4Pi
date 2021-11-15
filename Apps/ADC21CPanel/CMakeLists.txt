@@ -9,8 +9,6 @@ if (UNIX AND NOT APPLE)
     include (Findpigpio)
 endif()
 
-option(USE_ALSA_API "" OFF)
-
 #helper function to add all images from a given folder:
 function(add_images_from_directory target imagesSubFolder)
     set (ImagesDir ${CMAKE_CURRENT_LIST_DIR}/${imagesSubFolder})
@@ -27,8 +25,6 @@ function(add_images_from_directory target imagesSubFolder)
 endfunction()
 
 if(UNIX AND NOT APPLE)
-    find_package(ALSA REQUIRED)
-    set(NATIVE_AUDIO_LIBS ${ALSA_LIBRARIES})
     find_package(pigpio REQUIRED)
 endif()
 
@@ -69,13 +65,6 @@ target_compile_definitions(${TargetName} PRIVATE
         #MICROPHONE_PERMISSION_TEXT="macOS requires permission for Microphone access" 
 	)
 
-if (UNIX AND NOT APPLE)
-    if(${USE_ALSA_API})
-        target_compile_definitions(${TargetName} PUBLIC
-                USE_ALSA_API=1)
-    endif()
-endif()
-
 #=====================
 #TARGET_LINK_LIBRARIES
 #=====================
@@ -92,7 +81,6 @@ target_link_libraries(${TargetName} PRIVATE
 
 if (UNIX AND NOT APPLE)
     target_link_libraries(${TargetName} PRIVATE
-            ${NATIVE_AUDIO_LIBS}
             ${pigpio_LIBRARY}
             ${pigpiod_if2_LIBRARY}
             pthread)
