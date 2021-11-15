@@ -8,16 +8,9 @@
 
 #define USE_PIGPIOD 0
 
-#define FX_BOX 1
-#define CPANEL 0
-
 #if JUCE_LINUX
     #include <cstdlib>
     #include <sstream>
-
-    #if USE_ALSA_API
-        #include <alsa/asoundlib.h>
-    #endif
 
     #if __arm__
         #if USE_PIGPIOD
@@ -65,8 +58,6 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
-    //TODO: Resolve auto-init issues on Linux/RPi
-    void initialiseDevice();
 private:
     bool enablePassthrough = false;
 
@@ -103,21 +94,6 @@ private:
     foleys::LevelMeterSource meterSource;
 
 #if JUCE_LINUX
-    #if USE_ALSA_API
-        snd_mixer_t *handle;
-        const char *card = "default";
-
-        long min, max;
-        snd_mixer_selem_id_t *sid;
-        const char *selem_name = "Master";
-        snd_mixer_elem_t* elem;
-
-        long min_capture, max_capture;
-        snd_mixer_selem_id_t *sid_capture;
-        const char *selem_name_capture = "Capture";
-        snd_mixer_elem_t* elem_capture;
-    #endif
-
     #if __arm__
         unsigned int TOP_BUTTON_PIN = 25;
         #if USE_PIGPIOD

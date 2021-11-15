@@ -83,25 +83,6 @@ MainComponent::MainComponent()
     addAndMakeVisible (meter);
 
 #if JUCE_LINUX
-    #if USE_ALSA_API
-        snd_mixer_open(&handle, 0);
-        snd_mixer_attach(handle, card);
-        snd_mixer_selem_register(handle, NULL, NULL);
-        snd_mixer_load(handle);
-
-        snd_mixer_selem_id_alloca(&sid);
-        snd_mixer_selem_id_set_index(sid, 0);
-        snd_mixer_selem_id_set_name(sid, selem_name);
-        elem = snd_mixer_find_selem(handle, sid);
-        if (elem)
-            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-
-        snd_mixer_selem_id_set_name(sid, selem_name_capture);
-        elem_capture = snd_mixer_find_selem(handle, sid);
-        if (elem_capture)
-            snd_mixer_selem_get_capture_volume_range(elem_capture, &min_capture, &max_capture);
-    #endif
-
     #if __arm__
         #if USE_PIGPIOD
             pi = pigpio_start(optHost, optPort);
@@ -191,27 +172,6 @@ MainComponent::MainComponent()
                          idFeedbackCross->get(), idLowPass->get(), idHighPass->get(), idPan->get(), idAllpass->get());
 }
 
-//TODO: Auto-initialising seems to be unreliable... :(
-void MainComponent::initialiseDevice()
-{
-    juce::AudioDeviceManager::AudioDeviceSetup setup = selector.deviceManager.getAudioDeviceSetup();
-#if JUCE_LINUX && __arm__
-    setup.inputDeviceName = "Jack Audio Connection Kit";
-    setup.outputDeviceName = "Jack Audio Connection Kit";
-#elif JUCE_LINUX
-    setup.inputDeviceName = "Scarlett 2i2 USB, USB Audio; Direct hardware device without any conversions";
-    setup.outputDeviceName = "Scarlett 2i2 USB, USB Audio; Direct hardware device without any conversions";
-    setup.sampleRate = 48000.0;
-    setup.bufferSize = 512;
-#endif
-    setup.sampleRate = 48000.0;
-    setup.bufferSize = 16;
-    juce::String error = selector.deviceManager.setAudioDeviceSetup(setup, true);
-
-    if (error.isNotEmpty())
-        std::cout << error << std::endl;
-}
-
 void MainComponent::quitCPanelButtonClicked()
 {
     juce::JUCEApplicationBase::quit();
@@ -227,9 +187,6 @@ MainComponent::~MainComponent()
     shutdownAudio();
 
 #if JUCE_LINUX
-    #if USE_ALSA_API
-        snd_mixer_close(handle);
-    #endif
     #if __arm__
         #if USE_PIGPIOD
             if (initialised_pigpio)
@@ -437,70 +394,18 @@ void MainComponent::resized()
 
 void MainComponent::parameterSliderChanged()
 {
-#if FX_BOX
     double value = parameterSlider.getValue();
     lushDelayEngine.setDelay(static_cast<float>(value));
-#elif CPANEL
-    double inputGainValueDecibels = parameterSlider.getValue();
-    double inputGainValue = (inputGainValueDecibels + 12.0) * 2.0;
-
-    #if JUCE_LINUX
-        #if __arm__
-            std::string command = "amixer -c0 sset ADC " + convertToStr(&inputGainValue) + "&";
-            system(command.c_str());
-        #elif USE_ALSA_API
-            if (elem_capture)
-            {
-                long normalizedValue = (long) inputGainValue * max_capture / 100;
-                int retval = snd_mixer_selem_set_capture_volume_all(elem_capture, normalizedValue);
-                if (retval)
-                    std::cout << retval << std::endl;
-            }
-        #endif
-    #endif
-#endif
 }
 
 void MainComponent::topButtonClicked()
 {
-#if FX_BOX
     enableReverb = topButton.getToggleState();
-#elif CPANEL
-    #if JUCE_LINUX && __arm__
-        if (topButton.getToggleState())
-        {
-            std::string command = R"(amixer -c0 sset "ADC Left Input" "{VIN1P, VIN1M}[DIFF]" &)";
-            system(command.c_str());
-        }
-        else
-        {
-            std::string command = R"(amixer -c0 sset "ADC Left Input" "VINL1[SE]" &)";
-            system(command.c_str());
-        }
-    #endif
-#endif
 }
 
 void MainComponent::bottomButtonClicked()
 {
-#if FX_BOX
     enableDelay = bottomButton.getToggleState();
-#elif CPANEL
-    #if JUCE_LINUX && __arm__
-        if (bottomButton.getToggleState())
-        {
-            std::string command = R"(amixer -c0 sset "ADC Right Input" "{VIN2P, VIN2M}[DIFF]" &)";
-            system(command.c_str());
-            channel2Enabled = true;
-        }
-        else
-        {
-            std::string command = R"(amixer -c0 sset "ADC Right Input" "VINR2[SE]" &)";
-            system(command.c_str());
-            channel2Enabled = false;
-        }
-    #endif
-#endif
 }
 
 void MainComponent::settingsButtonClicked()
