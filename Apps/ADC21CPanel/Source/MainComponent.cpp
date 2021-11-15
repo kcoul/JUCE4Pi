@@ -2,7 +2,6 @@
 #include "BinaryHelper.h"
 namespace GuiApp
 {
-
 //==============================================================================
 MainComponent::MainComponent()
 {
@@ -162,33 +161,6 @@ MainComponent::MainComponent()
 #endif
 
     setAudioChannels(2,2);
-
-//Delay Init
-    delayRange.setSkewForCentre(100.0f);
-    gainRange.setSkewForCentre(-18.0f);
-    frequencyRange.setSkewForCentre(640.0f);
-    modRateRange.setSkewForCentre(2.0f);
-    spreadRange.setSkewForCentre(1.0f);
-    idDry = std::make_unique<AudioParameterFloat>(Params::idDry, "Dry Enabled", gainRange, 0.0f);
-    idWet = std::make_unique<AudioParameterFloat>(Params::idWet, "Wet dB", gainRange, -6.0f);
-    idBypass = std::make_unique<AudioParameterBool>(Params::idBypass, "Matched Bypass", false);
-    idDelay = std::make_unique<AudioParameterFloat>(Params::idDelay, "Delay", delayRange, 100.0f);
-    idPan = std::make_unique<AudioParameterFloat>(Params::idPan, "Pan", 0.0f, 1.0f, 0.5f);
-    idTaps = std::make_unique<AudioParameterInt>(Params::idTaps, "Taps", 1, Params::MAX_TAPS, 1);
-    idSpread = std::make_unique<AudioParameterFloat>(Params::idSpread, "Spread", spreadRange, 1.0f);
-    idOffsetLR = std::make_unique<AudioParameterFloat>(Params::idOffsetLR, "L/R Offset", 0.0f, 1.0f, 0.5f );
-    idAllpass = std::make_unique<AudioParameterFloat>(Params::idAllpass, "Allpass", 0.0f, 1.0f, 0.0f );
-    idFeedbackDirect = std::make_unique<AudioParameterFloat>(Params::idFeedbackDirect, "Direct Feedback", 0.0f, 1.0f, 0.1f);
-    idFeedbackCross = std::make_unique<AudioParameterFloat>(Params::idFeedbackCross, "Cross Feedback", 0.0f, 1.0f, 0.1f);
-    idHighPass = std::make_unique<AudioParameterFloat>(Params::idHighPass, "High Pass Hz", frequencyRange, 20.0f);
-    idLowPass = std::make_unique<AudioParameterFloat>(Params::idLowPass, "Low Pass Hz", frequencyRange, 20000.0f);
-    idModDepth = std::make_unique<AudioParameterFloat>(Params::idModDepth, "Mod Depth", 0.0f, 1.0f, 0.0f);
-    idModRate = std::make_unique<AudioParameterFloat>(Params::idModRate, "Mod Rate (Hz)", modRateRange, 2.0f);
-    idSnap = std::make_unique<AudioParameterFloat>(Params::idSnap, "Snap Note", 0.0f, 1.0f, 0.0f);
-
-    lushDelayEngine.init(idDry->get(), idWet->get(), idBypass->get(), idModDepth->get(), idModRate->get(),
-                         idDelay->get(), idTaps->get(), idSpread->get(), idOffsetLR->get(), idFeedbackDirect->get(),
-                         idFeedbackCross->get(), idLowPass->get(), idHighPass->get(), idPan->get(), idAllpass->get());
 }
 
 //TODO: Auto-initialising seems to be unreliable... :(
@@ -316,20 +288,6 @@ void MainComponent::handleBottomButton(int gpio, int edge, uint32_t tick)
 void MainComponent::prepareToPlay(int samplesPerBlockExpected, double sampleRate)
 {
     meterSource.resize (2, static_cast<int>(sampleRate * 0.1 / samplesPerBlockExpected));
-
-//Reverb Setup
-    juce::dsp::ProcessSpec spec{};
-
-    spec.sampleRate = sampleRate;
-    spec.maximumBlockSize = static_cast<uint32>(samplesPerBlockExpected);
-    spec.numChannels = 1;
-
-    leftReverb.prepare(spec);
-    rightReverb.prepare(spec);
-
-//Delay Setup
-    auto numOutputChannels = 2;
-    lushDelayEngine.prepare({ sampleRate, (uint32) samplesPerBlockExpected, (uint32) numOutputChannels });
 }
 
 void MainComponent::releaseResources()
@@ -353,34 +311,9 @@ void MainComponent::getNextAudioBlock(const juce::AudioSourceChannelInfo& buffer
                                       1, 0, bufferToFill.buffer->getNumSamples());
     }
 
-    if (enableReverb)
-    {
-        params.roomSize = 0.5f /**apvts.getRawParameterValue ("Room Size")*/;
-        params.damping = 0.5f /**apvts.getRawParameterValue ("Damping")*/;
-        params.width = 0.5f /**apvts.getRawParameterValue ("Width")*/;
-        params.wetLevel = 0.5f /**apvts.getRawParameterValue ("Dry/Wet")*/;
-        params.dryLevel = 0.5f /*1.0f - *apvts.getRawParameterValue ("Dry/Wet")*/;
-        params.freezeMode = false /**apvts.getRawParameterValue ("Freeze")*/;
-
-        leftReverb.setParameters(params);
-        rightReverb.setParameters(params);
-
-        juce::dsp::AudioBlock<float> block(*bufferToFill.buffer);
-
-        auto leftBlock = block.getSingleChannelBlock(0);
-        auto rightBlock = block.getSingleChannelBlock(1);
-
-        juce::dsp::ProcessContextReplacing<float> leftContext(leftBlock);
-        juce::dsp::ProcessContextReplacing<float> rightContext(rightBlock);
-
-        leftReverb.process(leftContext);
-        rightReverb.process(rightContext);
-    }
-
-    if (enableDelay)
-    {
-        lushDelayEngine.process(*bufferToFill.buffer);
-    }
+    //Copy output 1 to 2 (dual-mono)
+    bufferToFill.buffer->copyFrom(1, 0, *bufferToFill.buffer,
+                                 0, 0, bufferToFill.buffer->getNumSamples());
 }
 
 void MainComponent::paint (juce::Graphics& g)
@@ -437,14 +370,10 @@ void MainComponent::resized()
 
 void MainComponent::parameterSliderChanged()
 {
-#if FX_BOX
-    double value = parameterSlider.getValue();
-    lushDelayEngine.setDelay(static_cast<float>(value));
-#elif CPANEL
+    #if JUCE_LINUX
     double inputGainValueDecibels = parameterSlider.getValue();
     double inputGainValue = (inputGainValueDecibels + 12.0) * 2.0;
 
-    #if JUCE_LINUX
         #if __arm__
             std::string command = "amixer -c0 sset ADC " + convertToStr(&inputGainValue) + "&";
             system(command.c_str());
@@ -458,14 +387,10 @@ void MainComponent::parameterSliderChanged()
             }
         #endif
     #endif
-#endif
 }
 
 void MainComponent::topButtonClicked()
 {
-#if FX_BOX
-    enableReverb = topButton.getToggleState();
-#elif CPANEL
     #if JUCE_LINUX && __arm__
         if (topButton.getToggleState())
         {
@@ -478,14 +403,10 @@ void MainComponent::topButtonClicked()
             system(command.c_str());
         }
     #endif
-#endif
 }
 
 void MainComponent::bottomButtonClicked()
 {
-#if FX_BOX
-    enableDelay = bottomButton.getToggleState();
-#elif CPANEL
     #if JUCE_LINUX && __arm__
         if (bottomButton.getToggleState())
         {
@@ -500,7 +421,6 @@ void MainComponent::bottomButtonClicked()
             channel2Enabled = false;
         }
     #endif
-#endif
 }
 
 void MainComponent::settingsButtonClicked()

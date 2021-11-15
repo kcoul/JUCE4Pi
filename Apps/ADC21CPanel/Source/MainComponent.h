@@ -8,9 +8,6 @@
 
 #define USE_PIGPIOD 0
 
-#define FX_BOX 1
-#define CPANEL 0
-
 #if JUCE_LINUX
     #include <cstdlib>
     #include <sstream>
@@ -46,7 +43,6 @@ struct Callback<Ret(Params...)> {
     static std::function<Ret(Params...)> func;
 };
 
-// Initialize the static member.
 template <typename Ret, typename... Params>
 std::function<Ret(Params...)> Callback<Ret(Params...)>::func;
 
@@ -160,39 +156,6 @@ private:
     HackAudio::Button enablePassthroughButton;
     void enablePassthroughButtonClicked();
     juce::Label enablePassthroughLabel;
-
-    juce::dsp::Reverb::Parameters params;
-    juce::dsp::Reverb leftReverb, rightReverb;
-
-    bool enableReverb = false;
-
-    LushDelayEngine lushDelayEngine;
-
-    juce::NormalisableRange<float> delayRange = NormalisableRange<float>(Params::MIN_DELAY, Params::MAX_DELAY);
-    juce::NormalisableRange<float> gainRange = NormalisableRange<float>(-100.0f, 0.0f);
-    juce::NormalisableRange<float> frequencyRange = NormalisableRange<float>(20.0f, 20000.0f, 0.1f);
-    // juce::NormalisableRange<float> tapsRange = NormalisableRange<float>(1.0f, 10.0f, 1.0f);
-    juce::NormalisableRange<float> modRateRange = NormalisableRange<float>(0.0f, 10.0f);
-    juce::NormalisableRange<float> spreadRange = NormalisableRange<float>(0.0f, 100.0f);
-
-    std::unique_ptr<AudioParameterFloat> idDry;
-    std::unique_ptr<AudioParameterFloat> idWet;
-    std::unique_ptr<AudioParameterBool> idBypass;
-    std::unique_ptr<AudioParameterFloat> idDelay;
-    std::unique_ptr<AudioParameterFloat> idPan;
-    std::unique_ptr<AudioParameterInt> idTaps;
-    std::unique_ptr<AudioParameterFloat> idSpread;
-    std::unique_ptr<AudioParameterFloat> idOffsetLR;
-    std::unique_ptr<AudioParameterFloat> idAllpass;
-    std::unique_ptr<AudioParameterFloat> idFeedbackDirect;
-    std::unique_ptr<AudioParameterFloat> idFeedbackCross;
-    std::unique_ptr<AudioParameterFloat> idHighPass;
-    std::unique_ptr<AudioParameterFloat> idLowPass;
-    std::unique_ptr<AudioParameterFloat> idModDepth;
-    std::unique_ptr<AudioParameterFloat> idModRate;
-    std::unique_ptr<AudioParameterFloat> idSnap;
-
-    bool enableDelay = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
