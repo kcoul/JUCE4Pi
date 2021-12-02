@@ -213,9 +213,9 @@ void MainComponent::pigpiod_cbf(int way)
     std::cout << "way=" << way << std::endl;
     juce::MessageManager::callAsync([this, way]
     {
-        inputGainSlider.setValue(way*5.0f, juce::dontSendNotification);
+        parameterSlider.setValue(way*5.0f, juce::dontSendNotification);
     });
-    inputGainChanged();
+    parameterSliderChanged();
 }
 #else
 void MainComponent::pigpio_cbf(int way)
