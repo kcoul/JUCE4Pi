@@ -4,10 +4,8 @@ Resources for JUCE-based audio development on the Raspberry Pi
 Raspberry Pi / Linux
 
 ```console
-git clone https://github.com/juce-framework/JUCE.git
 sudo apt update
 sudo apt install cmake
-sudo apt install clang
 sudo apt install libasound2-dev \
 libjack-jackd2-dev ladspa-sdk \
 libcurl4-openssl-dev  \
@@ -19,14 +17,6 @@ libglu1-mesa-dev mesa-common-dev
 ```
 
 ````console
-#Raspberry Pi
+#Raspberry Pi Only
 
 sudo apt install pigpio
-
-#Linux
-
-wget https://github.com/joan2937/pigpio/archive/master.zip
-unzip master.zip
-cd pigpio-master
-make
-sudo make install
