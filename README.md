@@ -5,7 +5,9 @@ Raspberry Pi / Linux
 
 ```console
 sudo apt update
+
 sudo apt install cmake
+
 sudo apt install libasound2-dev \
 libjack-jackd2-dev ladspa-sdk \
 libcurl4-openssl-dev  \
