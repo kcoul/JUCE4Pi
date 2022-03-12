@@ -46,7 +46,7 @@ add_images_from_directory(${BaseTargetName} Images)
 set (SRC_LIST
         Source/Main.cpp)
 
-if(UNIX AND NOT APPLE)
+if(ARM)
         set (SRC_LIST ${SRC_LIST}
                 Source/RED.c
                 Source/rotary_encoder.cpp)
