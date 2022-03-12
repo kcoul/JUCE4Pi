@@ -28,6 +28,9 @@ endfunction()
 if(UNIX AND NOT APPLE)
     find_package(ALSA REQUIRED)
     set(NATIVE_AUDIO_LIBS ${ALSA_LIBRARIES})
+endif()
+
+if(ARM)
     find_package(pigpio REQUIRED)
 endif()
 
@@ -70,7 +73,7 @@ target_link_libraries(${BaseTargetName} PRIVATE
         juce_recommended_lto_flags
         juce_recommended_warning_flags)
 
-if (UNIX AND NOT APPLE)
+if (ARM)
     target_link_libraries(${BaseTargetName} PRIVATE
             ${pigpio_LIBRARY}
             ${pigpiod_if2_LIBRARY}

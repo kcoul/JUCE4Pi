@@ -24,7 +24,7 @@ function(add_images_from_directory target imagesSubFolder)
     endif()
 endfunction()
 
-if(UNIX AND NOT APPLE)
+if(ARM)
     find_package(pigpio REQUIRED)
 endif()
 
@@ -42,7 +42,7 @@ set (SRC_LIST
         Source/MainComponent.cpp
         Source/MainWindow.cpp)
 
-if(UNIX AND NOT APPLE)
+if(ARM)
         set (SRC_LIST ${SRC_LIST}
                 Source/RED.c
                 Source/rotary_encoder.cpp)
@@ -79,7 +79,7 @@ target_link_libraries(${TargetName} PRIVATE
         hack_audio_gui
         ff_meters)
 
-if (UNIX AND NOT APPLE)
+if (ARM)
     target_link_libraries(${TargetName} PRIVATE
             ${pigpio_LIBRARY}
             ${pigpiod_if2_LIBRARY}
