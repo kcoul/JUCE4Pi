@@ -22,3 +22,4 @@ libglu1-mesa-dev mesa-common-dev
 #Raspberry Pi Only
 
 sudo apt install pigpio
+sudo apt install ninja-build
