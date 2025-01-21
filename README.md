@@ -7,6 +7,7 @@ Raspberry Pi / Linux
 sudo apt update
 
 sudo apt install cmake
+sudo apt install ninja-build
 
 sudo apt install libasound2-dev \
 libjack-jackd2-dev ladspa-sdk \
@@ -22,4 +23,3 @@ libglu1-mesa-dev mesa-common-dev
 #Raspberry Pi Only
 
 sudo apt install pigpio
-sudo apt install ninja-build
