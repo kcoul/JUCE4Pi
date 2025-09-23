@@ -4,9 +4,10 @@ Resources for JUCE-based audio development on the Raspberry Pi
 Raspberry Pi / Linux
 
 ```console
+sudo snap install cmake --classic
+
 sudo apt update
 
-sudo apt install cmake
 sudo apt install ninja-build
 
 sudo apt install libasound2-dev \
