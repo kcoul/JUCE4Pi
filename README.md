@@ -1,8 +1,7 @@
 # JUCE4Pi
 Resources for JUCE-based audio development on the Raspberry Pi
 
-Raspberry Pi / Linux
-
+## Raspberry Pi OS / Ubuntu 
 ```console
 sudo snap install cmake --classic
 
@@ -25,3 +24,6 @@ sudo apt install libwebkit2gtk-4.1-dev
 #Raspberry Pi Only
 
 sudo apt install pigpio
+
+## QNX
+
