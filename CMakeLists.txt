@@ -1,23 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(ADC21CPanel)
-
-#including CPM.cmake, a package manager:
-#https://github.com/TheLartians/CPM.cmake
-include(CMake/CPM.cmake)
-
-#Fetching JUCE from git
-#If you want to instead point it to a local version, you can invoke CMake with
-#-DCPM_JUCE_SOURCE="Path_To_JUCE" in your machine-specific env settings,
-# or something like below to sync across machines
-set (CPM_JUCE_SOURCE ${PROJECT_SOURCE_DIR}/../JUCE)
-CPMAddPackage(
-        NAME JUCE
-        GITHUB_REPOSITORY kcoul/JUCE
-        GIT_TAG origin/develop)
-
-#If you have trouble with CPM, you can place a copy of JUCE in your repository tree,
-# add it to your .gitignore, and use the line below instead
-#add_subdirectory(JUCE)
+project(JUCE4Pi)
 
 # Including custom cmake rules
 include(CMake/clang-cxx-dev-tools.cmake)
@@ -49,14 +31,10 @@ option(JUCE_BUILD_EXAMPLES "Build JUCE Examples" OFF)
 #By default, we are building the provided plugin/app examples:
 option(BUILD_JUCE_PROTOTYPE_EXAMPES "Build JUCE prototype examples" ON)
 
+# ADCJapan26 adds surge (which adds libs/JUCE and SurgeMidiToOscBridge),
+# establishing the juce:: targets used by everything else.
+add_subdirectory(ADCJapan26)
+
 if (${BUILD_JUCE_PROTOTYPE_EXAMPES})
-    #adding any custom modules you might have:
-    add_subdirectory(Modules)
-    #adding project folders:
-    add_subdirectory(Apps)
-    add_subdirectory(HeadlessApps)
-    add_subdirectory(OpenGLPlugins)
-    add_subdirectory(Plugins)
-    add_subdirectory(Reverbs)
-    add_subdirectory(Delays)
+    add_subdirectory(ADC21)
 endif()

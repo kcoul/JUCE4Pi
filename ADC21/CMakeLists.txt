@@ -1,0 +1,7 @@
+add_subdirectory(Modules)
+add_subdirectory(Apps)
+add_subdirectory(HeadlessApps)
+add_subdirectory(OpenGLPlugins)
+add_subdirectory(Plugins)
+add_subdirectory(Reverbs)
+add_subdirectory(Delays)

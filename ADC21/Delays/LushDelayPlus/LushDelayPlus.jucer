@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="YrWzqh" name="LushDelayPlus" projectType="audioplug" cppLanguageStandard="17"
+              version="0.5.0" companyName="Sailing To Mars" pluginFormats="buildAU,buildStandalone,buildVST3"
+              pluginChannelConfigs="{1, 2}, {2, 2}" displaySplashScreen="1"
+              jucerFormatVersion="1" pluginManufacturerCode="Spbt" pluginCode="Lshp">
+  <MAINGROUP id="uynNn5" name="LushDelayPlus">
+    <FILE id="wa8mPu" name="VisualizerCrossFB.svg" compile="0" resource="1"
+          file="Graphics/svg/VisualizerCrossFB.svg"/>
+    <FILE id="hdEM3v" name="VisualizerDirectFB.svg" compile="0" resource="1"
+          file="Graphics/svg/VisualizerDirectFB.svg"/>
+    <FILE id="ytBvW9" name="VisualizerLeft.svg" compile="0" resource="1"
+          file="Graphics/svg/VisualizerLeft.svg"/>
+    <FILE id="QUWBJQ" name="VisualizerRight.svg" compile="0" resource="1"
+          file="Graphics/svg/VisualizerRight.svg"/>
+    <FILE id="eZyqGc" name="Montserrat-Regular.ttf" compile="0" resource="1"
+          file="Fonts/Montserrat/Montserrat-Regular.ttf"/>
+    <FILE id="Qcm18x" name="Montserrat-Thin.ttf" compile="0" resource="1"
+          file="Fonts/Montserrat/Montserrat-Thin.ttf"/>
+    <FILE id="CK2q2j" name="DancingScript-Regular.ttf" compile="0" resource="1"
+          file="Fonts/Dancing_Script/static/DancingScript-Regular.ttf"/>
+    <GROUP id="{2B4E8FFD-DFCE-8FC2-A3CA-16EE9CB6C0AA}" name="GUI">
+      <FILE id="TRC5ut" name="ControlPair.h" compile="0" resource="0" file="Source/ControlPair.h"/>
+      <FILE id="dFILSl" name="ControlPanel.h" compile="0" resource="0" file="Source/ControlPanel.h"/>
+      <FILE id="bA79mS" name="DelayVisualizer.h" compile="0" resource="0"
+            file="Source/DelayVisualizer.h"/>
+      <FILE id="QuooAH" name="DryWetControl.h" compile="0" resource="0" file="Source/DryWetControl.h"/>
+      <FILE id="gqoqfM" name="EqPair.h" compile="0" resource="0" file="Source/EqPair.h"/>
+      <FILE id="vGAXa1" name="HeaderPanel.h" compile="0" resource="0" file="Source/HeaderPanel.h"/>
+      <FILE id="oWK0Av" name="KnobPair.h" compile="0" resource="0" file="Source/KnobPair.h"/>
+      <FILE id="L16HoX" name="SliderPair.h" compile="0" resource="0" file="Source/SliderPair.h"/>
+    </GROUP>
+    <GROUP id="{6785F3B1-0EC0-4CA4-D372-30F55E4E18D6}" name="Processing">
+      <FILE id="eR6TDr" name="HighLowFilter.h" compile="0" resource="0" file="Source/HighLowFilter.h"/>
+      <FILE id="MflHqY" name="LushDelayEngine.h" compile="0" resource="0"
+            file="Source/LushDelayEngine.h"/>
+      <FILE id="e9Lfpb" name="LushDelayLine.h" compile="0" resource="0" file="Source/LushDelayLine.h"/>
+      <FILE id="ZlOa1F" name="StereoDelayLine.h" compile="0" resource="0"
+            file="Source/StereoDelayLine.h"/>
+    </GROUP>
+    <GROUP id="{00A3004E-0402-4A4F-81EE-380E4DA77188}" name="Source">
+      <FILE id="Lz9PTJ" name="Params.h" compile="0" resource="0" file="Source/Params.h"/>
+      <FILE id="YIq9YT" name="LushLookAndFeel.h" compile="0" resource="0"
+            file="Source/LushLookAndFeel.h"/>
+      <FILE id="IkVve4" name="PluginProcessor.cpp" compile="1" resource="0"
+            file="Source/PluginProcessor.cpp"/>
+      <FILE id="jCqXsY" name="PluginProcessor.h" compile="0" resource="0"
+            file="Source/PluginProcessor.h"/>
+      <FILE id="YtMnKr" name="PluginEditor.cpp" compile="1" resource="0"
+            file="Source/PluginEditor.cpp"/>
+      <FILE id="HiKPek" name="PluginEditor.h" compile="0" resource="0" file="Source/PluginEditor.h"/>
+    </GROUP>
+  </MAINGROUP>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" enablePluginBinaryCopyStep="0"/>
+        <CONFIGURATION isDebug="0" name="Release" enablePluginBinaryCopyStep="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="juce_opengl" path="~/repos/JUCE/modules"/>
+        <MODULEPATH id="stm_dsp" path="../../Modules/"/>
+        <MODULEPATH id="stm_gui" path="../../Modules/"/>
+        <MODULEPATH id="juce_dsp" path="~/repos/JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+    <VS2019 targetFolder="Builds/VisualStudio2019">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" enablePluginBinaryCopyStep="0"/>
+        <CONFIGURATION isDebug="0" name="Release" enablePluginBinaryCopyStep="0"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_cryptography" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_opengl" path="../../../../JUCE/modules"/>
+        <MODULEPATH id="stm_dsp" path="../../Modules/"/>
+        <MODULEPATH id="stm_gui" path="../../Modules/"/>
+        <MODULEPATH id="juce_dsp" path="../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2019>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_cryptography" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_opengl" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="stm_dsp" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="stm_gui" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <OSX/>
+  </LIVE_SETTINGS>
+  <JUCEOPTIONS JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+</JUCERPROJECT>
