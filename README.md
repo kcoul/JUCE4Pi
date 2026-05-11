@@ -24,6 +24,7 @@ sudo apt install libwebkit2gtk-4.1-dev
 #Raspberry Pi Only
 
 sudo apt install pigpio
+```
 
 ## QNX
 
