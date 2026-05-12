@@ -1,4 +1,5 @@
 juce_add_plugin(SimpleReverbPlus
+    BUNDLE_ID "com.SuzukiKengo.SimpleReverbPlus"
     COMPANY_NAME "Suzuki Kengo"  
     COMPANY_COPYRIGHT "Suzuki Kengo"
     COMPANY_WEBSITE "https://suzuki-kengo.net"

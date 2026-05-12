@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(JUCE4Pi)
+project(JUCE4Pi VERSION 0.1)
 
 # Including custom cmake rules
 include(CMake/clang-cxx-dev-tools.cmake)
@@ -28,13 +28,13 @@ option(JUCE_ENABLE_MODULE_SOURCE_GROUPS "Enable Module Source Groups" ON)
 option(JUCE_BUILD_EXTRAS "Build JUCE Extras" OFF)
 option(JUCE_BUILD_EXAMPLES "Build JUCE Examples" OFF)
 
-#By default, we are building the provided plugin/app examples:
-option(BUILD_JUCE_PROTOTYPE_EXAMPES "Build JUCE prototype examples" ON)
+#By default, we are not building the provided plugin/app examples from ADC21:
+option(BUILD_JUCE_PROTOTYPE_EXAMPLES "Build JUCE prototype examples" OFF)
 
 # ADCJapan26 adds surge (which adds libs/JUCE and SurgeMidiToOscBridge),
 # establishing the juce:: targets used by everything else.
 add_subdirectory(ADCJapan26)
 
-if (${BUILD_JUCE_PROTOTYPE_EXAMPES})
+if (${BUILD_JUCE_PROTOTYPE_EXAMPLES})
     add_subdirectory(ADC21)
 endif()
