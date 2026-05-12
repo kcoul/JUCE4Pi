@@ -20,12 +20,13 @@ RED    = RGBColor(0xFF, 0x44, 0x3A)   # QNX primary red
 RED2   = RGBColor(0x85, 0x35, 0x2E)   # deep red (destination nodes)
 GRAY1  = RGBColor(0xC0, 0xC0, 0xBB)   # light gray (arrows, labels)
 GRAY3  = RGBColor(0x5E, 0x5D, 0x5A)   # mid gray (host nodes)
+DARK1  = RGBColor(0x24, 0x24, 0x22)   # dark card fill
 PURPLE = RGBColor(0x8C, 0x62, 0xFF)   # energizer purple (boundary marker)
 WHITE  = RGBColor(0xFF, 0xFF, 0xFF)
 
 # ── MSO shape constants (integer form for portability) ────────────────────────
 ROUNDED_RECTANGLE = 5
-RIGHT_ARROW       = 13
+RIGHT_ARROW       = 33
 
 # ── template helpers ──────────────────────────────────────────────────────────
 def open_template(path):
@@ -307,6 +308,121 @@ def add_divider(prs, chapter_num, title):
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0,  title)
     set_ph(slide, 13, f"Section {chapter_num}.")
+    return slide
+
+
+def _add_support_card(slide, x, y, w, h, step, title, subtitle, body_lines, accent):
+    """Slide-41-style process card: badge, title, short subtitle, and body lines."""
+    card = slide.shapes.add_shape(
+        ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
+    )
+    card.fill.solid()
+    card.fill.fore_color.rgb = DARK1
+    card.line.color.rgb = GRAY3
+    card.line.width = Pt(0.75)
+
+    badge = slide.shapes.add_shape(
+        ROUNDED_RECTANGLE, Inches(x + 0.12), Inches(y + 0.14), Inches(0.52), Inches(0.46)
+    )
+    badge.fill.solid()
+    badge.fill.fore_color.rgb = accent
+    badge.line.fill.background()
+    tf = badge.text_frame
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    run = p.add_run()
+    run.text = str(step)
+    run.font.name = "Onest SemiBold"
+    run.font.size = Pt(14)
+    run.font.color.rgb = WHITE
+
+    add_label(slide, x + 0.72, y + 0.22, w - 0.84, 0.24,
+              f"STEP {step}", GRAY1, font_size=7.5, align=PP_ALIGN.LEFT, bold=True)
+
+    txb = slide.shapes.add_textbox(Inches(x + 0.16), Inches(y + 0.82),
+                                   Inches(w - 0.32), Inches(h - 0.98))
+    tf = txb.text_frame
+    tf.word_wrap = True
+    tf.margin_left = Inches(0.02)
+    tf.margin_right = Inches(0.02)
+    tf.margin_top = Inches(0.00)
+    tf.margin_bottom = Inches(0.00)
+
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.LEFT
+    run = p.add_run()
+    run.text = title
+    run.font.name = "Onest SemiBold"
+    run.font.size = Pt(15)
+    run.font.color.rgb = WHITE
+
+    p = tf.add_paragraph()
+    p.alignment = PP_ALIGN.LEFT
+    run = p.add_run()
+    run.text = subtitle
+    run.font.name = "Onest"
+    run.font.size = Pt(9)
+    run.font.color.rgb = accent
+
+    for line in body_lines:
+        p = tf.add_paragraph()
+        p.alignment = PP_ALIGN.LEFT
+        run = p.add_run()
+        run.text = line
+        run.font.name = "Onest"
+        run.font.size = Pt(9)
+        run.font.color.rgb = GRAY1
+
+    return card
+
+
+def add_host_target_support_matrix_slide(prs):
+    """
+    Adapted from QNX Slide Library slide 41: four process steps across the page.
+    Shows the practical path for Windows-first development across Linux and QNX.
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Host / Target Support Matrix")
+
+    # Geometry mirrors the four-column process layout in QNX Slide Library slide 41.
+    xs = [0.68, 3.83, 6.98, 10.13]
+    y, w, h = 2.20, 2.52, 4.30
+
+    host_w = xs[1] + w - xs[0]
+    target_w = xs[3] + w - xs[2]
+    add_label(slide, xs[0], 1.82, host_w, 0.26, "HOSTS", GRAY1, font_size=8, bold=True)
+    add_label(slide, xs[2], 1.82, target_w, 0.26, "TARGETS", GRAY1, font_size=8, bold=True)
+
+    boundary_x = (xs[1] + w + xs[2]) / 2
+    add_vline(slide, boundary_x, 1.78, 6.72, PURPLE, width_pt=1.25)
+
+    cards = [
+        (1, "Windows Host", "Windows 11",
+         ["Builds the bridge for Windows",
+          "QNX SDP works natively",
+          "Hailo backend stays disabled"], RED),
+        (2, "Ubuntu Host", "Native Linux or WSL2",
+         ["Uses apt multiarch packages",
+          "Cross-compiles for Ubuntu arm64",
+          "Links the HailoRT arm64 sysroot"], RED),
+        (3, "Ubuntu Target", "Raspberry Pi 5",
+         ["Runs the Linux arm64 bridge",
+          "Exercises Hailo-10H over PCIe",
+          "Validates the voice-command path"], RED),
+        (4, "QNX Target", "Raspberry Pi 5",
+         ["Runs SurgeXT on QNX",
+          "Uses the QNX cross SDK",
+          "Keeps the same host-first workflow"], RED),
+    ]
+
+    for x, card in zip(xs, cards):
+        _add_support_card(slide, x, y, w, h, *card)
+
+    for x in [3.24, 6.39, 9.55]:
+        add_arrow(slide, x, 3.33, 0.55, 0.28, GRAY1)
+
     return slide
 
 
@@ -658,6 +774,7 @@ def main():
 
     # ── Section 5: Getting to the Target ─────────────────────────
     add_divider(prs, 5, "Getting to the Target")
+    add_host_target_support_matrix_slide(prs)
     add_signal_chain_slide(prs)
     add_signal_chain_full_target_slide(prs)
     # TODO: remaining content
