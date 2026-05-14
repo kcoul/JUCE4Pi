@@ -1340,6 +1340,34 @@ def add_next_steps_slide(prs):
     return slide
 
 
+# ── Dedication slide ──────────────────────────────────────────────────────────
+
+def add_dedication_slide(prs):
+    """
+    Post-punchline dedication to Jason Dasent — music producer and accessibility
+    consultant whose vision, sparked by ADC21, is what this project is reaching for.
+    """
+    lyt   = get_layout(prs, 1, "Statement")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Dedicated to")
+    set_ph(slide, 12, (
+        "Jason Dasent — music producer and accessibility consultant —\n"
+        "saw ADC21 and asked: can a Raspberry Pi and voice commands\n"
+        "help blind people work in a professional studio?\n"
+        "\n"
+        "It took five years. This project is the beginning of that answer.\n"
+        "\n"
+        "The FOSS community is invited to help make his dream a reality."
+    ))
+    add_label(
+        slide, 0.68, 6.78, 4.0, 0.22,
+        "jasondasent.com",
+        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
+        url="https://www.jasondasent.com/",
+    )
+    return slide
+
+
 # ── Contact slide ─────────────────────────────────────────────────────────────
 
 def add_contact_slide(prs):
@@ -1518,7 +1546,8 @@ def main():
         title="Live: Voice-Commanded Patch Selection",
     )
 
-    # ── Contact ───────────────────────────────────────────────────
+    # ── Dedication + Contact ──────────────────────────────────────
+    add_dedication_slide(prs)
     add_contact_slide(prs)
 
     prs.save(OUTPUT)
