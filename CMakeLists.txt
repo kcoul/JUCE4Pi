@@ -8,7 +8,7 @@ include(CMake/clang-cxx-dev-tools.cmake)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 #Minimum MacOS target, set globally
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.9" CACHE STRING "Minimum OS X deployment version" FORCE)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "Minimum OS X deployment version" FORCE)
 
 option(UniversalBinary "Build universal binary for mac" OFF)
 
