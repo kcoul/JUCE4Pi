@@ -1,3 +1,4 @@
 [submodule "ADCJapan26/surge"]
 	path = ADCJapan26/surge
 	url = https://github.com/kcoul/surge.git
+	branch = main
