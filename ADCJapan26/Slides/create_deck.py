@@ -133,6 +133,82 @@ def set_content_ph(slide, idx, header, items):
             return
 
 
+# ── SVG image helper ──────────────────────────────────────────────────────────
+def add_svg_image(slide, svg_path, left_in, top_in, width_in, height_in, fill_subs=None):
+    """
+    Embed an SVG on the slide using raw OOXML part injection.
+    PowerPoint 2016+ renders it as vector; older viewers fall back to a 1×1
+    transparent PNG so no broken-image icon appears.
+    python-pptx has no native SVG API — we create the Part/relationship manually.
+    """
+    import uuid, base64
+    import lxml.etree as etree
+    from pptx.opc.package import Part
+    from pptx.opc.packuri import PackURI
+
+    IMG_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+    NS_P   = "http://schemas.openxmlformats.org/presentationml/2006/main"
+    NS_A   = "http://schemas.openxmlformats.org/drawingml/2006/main"
+    NS_R   = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    NS_SVG = "http://schemas.microsoft.com/office/drawing/2016/SVG/main"
+
+    FALLBACK_PNG = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhf"
+        "DwAChwGA60e6kgAAAABJRU5ErkJggg=="
+    )
+
+    with open(svg_path, "rb") as f:
+        svg_bytes = f.read()
+    for old, new in (fill_subs or {}).items():
+        svg_bytes = svg_bytes.replace(old, new)
+
+    uid      = uuid.uuid4().hex[:8]
+    sp       = slide.part
+    pkg      = sp.package
+
+    png_part = Part(PackURI(f"/ppt/media/svg_fb_{uid}.png"),
+                   "image/png", pkg, FALLBACK_PNG)
+    svg_part = Part(PackURI(f"/ppt/media/svg_{uid}.svg"),
+                   "image/svg+xml", pkg, svg_bytes)
+
+    rid_png = sp.relate_to(png_part, IMG_REL)
+    rid_svg = sp.relate_to(svg_part, IMG_REL)
+
+    x_emu  = int(left_in   * 914400)
+    y_emu  = int(top_in    * 914400)
+    cx_emu = int(width_in  * 914400)
+    cy_emu = int(height_in * 914400)
+    guid   = str(uuid.uuid4()).upper()
+
+    pic_xml = (
+        f'<p:pic xmlns:p="{NS_P}" xmlns:a="{NS_A}" xmlns:r="{NS_R}">'
+        f'<p:nvPicPr>'
+        f'<p:cNvPr id="200" name="SVGLogo">'
+        f'<a:extLst><a:ext uri="{{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}}">'
+        f'<a16:creationId xmlns:a16="{NS_SVG}" id="{{{guid}}}"/>'
+        f'</a:ext></a:extLst></p:cNvPr>'
+        f'<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr>'
+        f'<p:nvPr/></p:nvPicPr>'
+        f'<p:blipFill>'
+        f'<a:blip r:embed="{rid_png}">'
+        f'<a:extLst><a:ext uri="{{96DAC541-7B7A-43D3-8B79-37D633B846F1}}">'
+        f'<asvg:svgBlip xmlns:asvg="{NS_SVG}" r:embed="{rid_svg}"/>'
+        f'</a:ext></a:extLst>'
+        f'</a:blip>'
+        f'<a:stretch><a:fillRect/></a:stretch>'
+        f'</p:blipFill>'
+        f'<p:spPr>'
+        f'<a:xfrm><a:off x="{x_emu}" y="{y_emu}"/>'
+        f'<a:ext cx="{cx_emu}" cy="{cy_emu}"/></a:xfrm>'
+        f'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'
+        f'<a:ln><a:noFill/></a:ln>'
+        f'</p:spPr>'
+        f'</p:pic>'
+    )
+
+    slide.shapes._spTree.append(etree.fromstring(pic_xml.encode()))
+
+
 # ── drawing helpers ───────────────────────────────────────────────────────────
 def add_node(slide, x, y, w, h, lines, fill, text_color=None, font_size=9.5):
     """Rounded rectangle with centred multi-line text."""
@@ -752,102 +828,68 @@ def add_qnx_everywhere_slide(prs):
             "The port is the foundation — everything else in this talk builds on it",
         ],
     )
+    # QNX Everywhere logo lockup — bottom-right corner (1058×204 native, ratio ~5.18:1)
+    # Recolour black fills to white so the lockup is legible on the dark background.
+    logo = os.path.join(SLIDES_DIR, "qnx-everywhere-logo-lockup.svg")
+    if os.path.exists(logo):
+        add_svg_image(slide, logo, left_in=0.68, top_in=6.60, width_in=2.70, height_in=0.52,
+                      fill_subs={b'fill="black"': b'fill="white"'})
     return slide
 
 
-def _add_fullscreen_timing(slide, sp_id):
+def _patch_video_timing(slide, autoplay=True, fullscreen=True):
     """
-    Inject a <p:timing> tree that plays shape sp_id fullscreen on click.
-    PowerPoint's 'Play Full Screen' checkbox writes exactly this XML;
-    python-pptx never generates it automatically, so we push it via lxml.
+    Modify the <p:timing> that add_movie() already wrote onto the slide.
+    fullscreen=True → adds fullScrn="1" to <p:video> (PowerPoint plays full-screen).
+    autoplay=True   → changes delay="indefinite" to delay="0" so playback starts
+                      on slide entry rather than waiting for a click.
     """
-    import lxml.etree as etree
-
-    NS_P = "http://schemas.openxmlformats.org/presentationml/2006/main"
-    NS_A = "http://schemas.openxmlformats.org/drawingml/2006/main"
-
-    xml = f"""\
-<p:timing xmlns:p="{NS_P}" xmlns:a="{NS_A}">
-  <p:tnLst>
-    <p:par>
-      <p:cTn id="1" dur="indefin" restart="whenNotActive" nodeType="tmRoot">
-        <p:childTnLst>
-          <p:seq concurrent="1" nextAc="seek">
-            <p:cTn id="2" dur="indefin" nodeType="mainSeq">
-              <p:childTnLst>
-                <p:par>
-                  <p:cTn id="3" fill="hold">
-                    <p:stCondLst>
-                      <p:cond delay="indefin"/>
-                    </p:stCondLst>
-                    <p:childTnLst>
-                      <p:par>
-                        <p:cTn id="4" fill="hold">
-                          <p:stCondLst>
-                            <p:cond delay="0"/>
-                          </p:stCondLst>
-                          <p:childTnLst>
-                            <p:video fullScrn="1">
-                              <p:cMediaNode vol="80000">
-                                <p:cTn id="5" dur="indefin" fill="hold"/>
-                                <p:tgtEl>
-                                  <p:spTgt spid="{sp_id}"/>
-                                </p:tgtEl>
-                              </p:cMediaNode>
-                            </p:video>
-                          </p:childTnLst>
-                        </p:cTn>
-                      </p:par>
-                    </p:childTnLst>
-                  </p:cTn>
-                </p:par>
-              </p:childTnLst>
-            </p:cTn>
-            <p:prevCondLst>
-              <p:cond evt="onPrevClick" delay="0">
-                <p:tn/>
-              </p:cond>
-            </p:prevCondLst>
-          </p:seq>
-        </p:childTnLst>
-      </p:cTn>
-    </p:par>
-  </p:tnLst>
-  <p:bldLst/>
-</p:timing>"""
-
-    slide._element.append(etree.fromstring(xml.encode()))
+    from pptx.oxml.ns import qn
+    timing = slide._element.find(qn("p:timing"))
+    if timing is None:
+        return
+    if fullscreen:
+        for video_el in timing.iter(qn("p:video")):
+            video_el.set("fullScrn", "1")
+    if autoplay:
+        for cond in timing.iter(qn("p:cond")):
+            if cond.get("delay") == "indefinite":
+                cond.set("delay", "0")
 
 
-def add_video_slide(prs, video_path, title, poster_path=None):
+def add_video_slide(prs, video_path, title=None, poster_path=None):
     """
-    Embed a video centred in the content area with an optional poster frame.
+    Embed a video centred in the slide with an optional poster frame.
+    title=None removes the title placeholder for a clean full-canvas look.
     If video_path doesn't exist, renders a branded placeholder box instead.
     Video is sized at ~70% of the slide width (maintains 16:9).
     Encoding requirements: H.264 baseline/main, yuv420p, AAC, -movflags +faststart.
     """
     lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, title)
 
-    # ── video geometry (70% width, 16:9, centred in content area) ────
+    if title is None:
+        # Delete the title placeholder so the slide is a clean canvas.
+        for ph in list(slide.placeholders):
+            if ph.placeholder_format.idx == 0:
+                ph._element.getparent().remove(ph._element)
+                break
+    else:
+        set_ph(slide, 0, title)
+
+    # ── video geometry (70% width, 16:9, centred in full slide) ──────
     VW = Inches(9.0)
-    VH = Inches(VW / Inches(1) * (9 / 16))   # 16:9 → 5.0625"
-    VH = Inches(5.06)
-    slide_w, content_top = Inches(13.33), Inches(1.45)
-    content_h = Inches(7.5) - content_top - Inches(0.3)
-    VX = (slide_w - VW) / 2
-    VY = content_top + (content_h - VH) / 2
+    VH = Inches(5.06)   # 16:9
+    VX = (Inches(13.33) - VW) / 2
+    VY = (Inches(7.5)   - VH) / 2
 
     if os.path.exists(video_path):
-        movie = slide.shapes.add_movie(
+        slide.shapes.add_movie(
             video_path, VX, VY, VW, VH,
             poster_frame_image=poster_path,
             mime_type="video/mp4",
         )
-        # _add_fullscreen_timing(slide, movie.shape_id)
-        # ^ Disabled: PowerPoint rejects the timing XML we inject.
-        #   Enable "Play Full Screen" manually via Video Format tab after opening.
+        _patch_video_timing(slide, autoplay=True, fullscreen=True)
     else:
         # Stand-in box until the real video is dropped in
         box = slide.shapes.add_shape(
@@ -882,17 +924,15 @@ def add_juce_porting_lessons_slide(prs):
             "existing Linux backend adapted in one day",
             "juce_core — POSIX base transferred almost directly",
             "Tracktion Engine — ported the same day as JUCE audio",
-            "\"Sometimes the platform surprises you positively\"",
         ],
     )
     set_content_ph(slide, 2,
-        "What took real time",
+        "What took time",
         [
             "The Screen Framework — new ComponentPeer from scratch",
             "11 commits · 2,433 lines · 2+ weeks",
             "Layers: Screen FW → keyboard/mouse → fonts → "
             "OpenGL → secondary windows",
-            "Each 'working' state exposed the next layer",
         ],
     )
     return slide
@@ -1070,16 +1110,13 @@ def add_tracktion_engine_slide(prs):
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0, "Bonus: Tracktion Engine on QNX")
     set_content_ph(slide, 1,
-        "The engine underneath — more than just a synth platform",
+        "Timeline-based audio engine running on target useful for eval",
         [
-            "Ported the same day as JUCE audio — "
-            "if JUCE builds, the engine follows",
-            "Timeline abstraction + plugin hosting on QNX: "
-            "drive audio library wrappers on any target hardware of your choice",
-            "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
-            "to automotive data buses than MIDI ever was",
             "“Why You Shouldn’t Write a DAW” — "
             "David Rowland, ADC23 — exactly how we’re thinking about this",
+            "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
+            "to automotive data buses than MIDI ever was",
+            "OSC is then a placeholder for real automotive data streams like VIN",
         ],
     )
     add_label(
@@ -1493,7 +1530,7 @@ def main():
              "Pure R&D belongs on the host: no target hardware, no cross-compilation, no embedded constraints"),
             ("The Lesson",
              "The further towards Research on the R&D spectrum, the more premature target work costs in friction"),
-            ("Coming in Part 4",
+            ("Coming in Future Talk",
              "NeuralPlayer didn't stop here — a future talk will reveal where this project went next"),
         ],
     )
@@ -1504,7 +1541,6 @@ def main():
     add_video_slide(
         prs,
         video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
-        title="It Works.",
     )
     add_juce_porting_lessons_slide(prs)
     add_screen_framework_slide(prs)

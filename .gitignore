@@ -48,3 +48,5 @@ ADCJapan26/Slides/*.potx
 #           this line, then: git add ADCJapan26/Slides/<FinalDeckName>.pptx
 ADCJapan26/Slides/*.pptx
 ADCJapan26/Slides/placeholder.mp4
+
+.claude/settings.local.json
