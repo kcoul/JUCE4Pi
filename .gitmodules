@@ -2,3 +2,6 @@
 	path = ADCJapan26/surge
 	url = https://github.com/kcoul/surge.git
 	branch = main
+[submodule "ADCJapan26/GENISYS"]
+	path = ADCJapan26/GENISYS
+	url = https://github.com/kcoul/GENISYS.git
