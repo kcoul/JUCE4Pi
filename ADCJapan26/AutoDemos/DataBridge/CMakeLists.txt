@@ -3,7 +3,7 @@ juce_add_plugin(DataBridge
     VERSION             "0.1"
     PLUGIN_MANUFACTURER_CODE Gnsy
     PLUGIN_CODE         GmOp
-    FORMATS             VST3
+    FORMATS             VST3 Standalone
     IS_MIDI_EFFECT      TRUE
     NEEDS_MIDI_INPUT    TRUE
     NEEDS_MIDI_OUTPUT   FALSE
@@ -27,6 +27,8 @@ target_compile_definitions(DataBridge
 target_link_libraries(DataBridge
     PRIVATE
         juce::juce_audio_processors
+        juce::juce_audio_devices
+        juce::juce_audio_utils
         juce::juce_gui_basics
         juce::juce_osc
     PUBLIC
