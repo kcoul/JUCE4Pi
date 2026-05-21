@@ -1,6 +1,10 @@
 """
 create_deck.py — builds the ADCJapan26 presentation from the QNX .potx template.
-Add a new function per slide, call it in main().
+
+Slide-generating functions are named add_sNN_* and appear in slide-number order.
+Generic helpers (add_divider, add_video_slide, add_quadrant_slide) are thin
+utilities; each concrete slide has its own named wrapper so the mapping is exact.
+
 Run: python create_deck.py
 """
 from pptx import Presentation
@@ -275,82 +279,14 @@ def add_label(slide, x, y, w, h, text, color, font_size=8,
     return txb
 
 
-# ── slides ────────────────────────────────────────────────────────────────────
-def add_title_slide(prs):
-    lyt   = get_layout(prs, 1, "Title | Quadrant Bar")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0,  "TX/RX Part 2:\nAI Audio on the Raspberry Pi")
-    set_ph(slide, 1,  "Audio Developer Conference Japan 2026")
-    set_ph(slide, 10, "Kieran Coulter | Principal Systems Software Developer - Audio")
-    return slide
-
-
-def add_signal_chain_slide(prs):
-    """
-    Full system signal chain:
-      Voice -> Whisper+NPU -> Prog+Bank -> [boundary] -> Bridge -> SurgeXT -> Audio
-    HOST nodes on the left, TARGET nodes on the right, separated by a purple line.
-    """
-    lyt   = get_layout(prs, 1, "Only Title")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "How It All Fits Together")
-
-    # ── geometry (all in inches) ──────────────────────────────────────
-    SLIDE_W = 13.33
-    NW, NH  = 1.65, 0.82   # node width, height
-    AW, AH  = 0.42, 0.22   # arrow width, height
-    GAP     = 0.50          # total space between adjacent nodes
-    Y_NODE  = 3.05          # node top edge
-    Y_ARR   = Y_NODE + (NH - AH) / 2   # arrow vertically centred with node
-
-    total_w = 6 * NW + 5 * GAP
-    X0      = (SLIDE_W - total_w) / 2   # centre the row
-
-    # left edge of each node / arrow
-    node_x  = [X0 + i * (NW + GAP)               for i in range(6)]
-    arrow_x = [node_x[i] + NW + (GAP - AW) / 2   for i in range(5)]
-
-    # ── nodes ─────────────────────────────────────────────────────────
-    # (text lines, fill colour)
-    # Nodes 0-2: HOST  |  Nodes 3-5: TARGET
-    spec = [
-        (["Voice",    "Input"],          GRAY3),  # 0 — host
-        (["Whisper",  "Hailo NPU"],      RED),    # 1 — hero: the NPU
-        (["Prog +",   "Bank Change"],    GRAY3),  # 2 — host
-        (["MIDI > OSC", "Bridge"],       GRAY3),  # 3 — target
-        (["SurgeXT",  "on QNX"],         RED2),   # 4 — target: the synth
-        (["Audio",    "Output"],         GRAY3),  # 5 — target
-    ]
-    for i, (lines, fill) in enumerate(spec):
-        add_node(slide, node_x[i], Y_NODE, NW, NH, lines, fill)
-
-    # ── arrows ────────────────────────────────────────────────────────
-    for x in arrow_x:
-        add_arrow(slide, x, Y_ARR, AW, AH, GRAY1)
-
-    # ── HOST / TARGET boundary ────────────────────────────────────────
-    # Gap between node 2 (last HOST) and node 3 (first TARGET)
-    x_boundary = node_x[2] + NW + GAP / 2
-    add_vline(slide, x_boundary, Y_NODE - 0.52, Y_NODE + NH + 0.52, PURPLE)
-
-    # Zone labels
-    host_w = x_boundary - X0
-    tgt_w  = total_w - host_w
-    add_label(slide, X0,                  Y_NODE - 0.52, host_w, 0.30,
-              "HOST",                GRAY1, font_size=8, bold=True)
-    add_label(slide, x_boundary + 0.05,   Y_NODE - 0.52, tgt_w,  0.30,
-              "TARGET  (QNX / RPi5)", GRAY1, font_size=8, bold=True)
-
-    return slide
-
-
+# ── complex helpers ───────────────────────────────────────────────────────────
 def _cell_text(cell, text, color, font_size, font_name="Onest", align=PP_ALIGN.LEFT):
     """Set cell text with explicit font/colour, clearing any placeholder runs."""
     tf = cell.text_frame
     tf.vertical_anchor = MSO_ANCHOR.MIDDLE
     p = tf.paragraphs[0]
     p.alignment = align
-    p.clear()           # remove any existing runs from the layout default
+    p.clear()
     run = p.add_run()
     run.text = text
     run.font.name  = font_name
@@ -366,7 +302,7 @@ def _style_table_borders(table):
     from pptx.oxml.ns import qn
     import lxml.etree as etree
 
-    LINE_COLOR = "8F8F8B"   # GRAY2 — visible but subtle on dark background
+    LINE_COLOR = "8F8F8B"
     LINE_W     = "9525"     # 0.75 pt in EMU
 
     nrows = len(table.rows)
@@ -392,64 +328,6 @@ def _style_table_borders(table):
                 else:
                     el.set("w", "0")
                     etree.SubElement(el, qn("a:noFill"))
-
-
-def add_agenda_slide(prs):
-    """
-    Agenda as a borderless 6x2 table on 'Only Title' canvas.
-    Col 0: "Chapter 0X." in QNX red, right-aligned (narrow)
-    Col 1: chapter name in white Onest SemiBold, left-aligned (wide)
-    No fills — dark master background shows through.
-    Time allotments live in presentation_outline.md, not on this slide.
-    """
-    lyt   = get_layout(prs, 1, "Only Title")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Agenda")
-
-    ROWS = 5
-    T_LEFT = Inches(1.20)
-    T_TOP  = Inches(1.55)
-    T_W    = Inches(10.93)
-    T_H    = Inches(5.30)
-    COL0_W = Inches(2.30)
-    COL1_W = Inches(8.63)
-
-    tbl = slide.shapes.add_table(ROWS, 2, T_LEFT, T_TOP, T_W, T_H).table
-    tbl.columns[0].width = COL0_W
-    tbl.columns[1].width = COL1_W
-
-    # Disable header-row styling so every row renders identically
-    tbl.first_row = False
-
-    chapters = [
-        ("Section 1.", "The Story So Far"),
-        ("Section 2.", "JUCE on QNX"),
-        ("Section 3.", "Audio on the NPU"),
-        ("Section 4.", "Developing Host-First"),
-        ("Section 5.", "Getting to the Target"),
-    ]
-
-    for r, (num, name) in enumerate(chapters):
-        c0 = tbl.cell(r, 0)
-        c0.fill.background()
-        c0.margin_right = Inches(0.25)   # breathing room between columns
-        _cell_text(c0, num,  RED,   font_size=13, align=PP_ALIGN.RIGHT)
-
-        c1 = tbl.cell(r, 1)
-        c1.fill.background()
-        _cell_text(c1, name, WHITE, font_size=20, font_name="Onest SemiBold")
-
-    _style_table_borders(tbl)
-    return slide
-
-
-def add_divider(prs, chapter_num, title):
-    """Dark-theme chapter divider slide (slideLayout29 = 'Divider', master[1])."""
-    lyt   = get_layout(prs, 1, "Divider")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0,  title)
-    set_ph(slide, 13, f"Section {chapter_num}.")
-    return slide
 
 
 def _add_support_card(slide, x, y, w, h, step, title, subtitle, body_lines, accent):
@@ -518,147 +396,6 @@ def _add_support_card(slide, x, y, w, h, step, title, subtitle, body_lines, acce
     return card
 
 
-def add_host_target_support_matrix_slide(prs):
-    """
-    Adapted from QNX Slide Library slide 41: four process steps across the page.
-    Shows the practical path for Windows-first development across Linux and QNX.
-    """
-    lyt   = get_layout(prs, 1, "Only Title")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Host / Target Support Matrix")
-
-    # Geometry mirrors the four-column process layout in QNX Slide Library slide 41.
-    xs = [0.68, 3.83, 6.98, 10.13]
-    y, w, h = 2.20, 2.52, 4.30
-
-    host_w = xs[1] + w - xs[0]
-    target_w = xs[3] + w - xs[2]
-    add_label(slide, xs[0], 1.82, host_w, 0.26, "HOSTS", GRAY1, font_size=8, bold=True)
-    add_label(slide, xs[2], 1.82, target_w, 0.26, "TARGETS", GRAY1, font_size=8, bold=True)
-
-    boundary_x = (xs[1] + w + xs[2]) / 2
-    add_vline(slide, boundary_x, 1.78, 6.72, PURPLE, width_pt=1.25)
-
-    cards = [
-        (1, "Windows Host", "Windows 11",
-         ["Builds the bridge for Windows",
-          "QNX SDP works natively",
-          "Hailo backend stays disabled"], RED),
-        (2, "Ubuntu Host", "Native Linux or WSL2",
-         ["Uses apt multiarch packages",
-          "Cross-compiles for Ubuntu arm64",
-          "Links the HailoRT arm64 sysroot"], RED),
-        (3, "Ubuntu Target", "Raspberry Pi 5",
-         ["Runs the Linux arm64 bridge",
-          "Exercises Hailo-10H over PCIe",
-          "Validates the voice-command path"], RED),
-        (4, "QNX Target", "Raspberry Pi 5",
-         ["Runs SurgeXT on QNX",
-          "Uses the QNX cross SDK",
-          "Keeps the same host-first workflow"], RED),
-    ]
-
-    for x, card in zip(xs, cards):
-        _add_support_card(slide, x, y, w, h, *card)
-
-    for x in [3.24, 6.39, 9.55]:
-        add_arrow(slide, x, 3.33, 0.55, 0.28, GRAY1)
-
-    return slide
-
-
-def add_quadrant_slide(prs, title, center_label, quadrants):
-    """
-    Recreates the Slide Library slide-44 'status report' layout:
-      - thin cross lines dividing the content area into four quadrants
-      - a filled rounded-square badge at the intersection (center_label)
-      - four text areas, each with a small GRAY1 header + larger WHITE body
-    quadrants = [(header, body), ...] in order: top-left, top-right,
-                                                bottom-left, bottom-right
-    """
-    lyt   = get_layout(prs, 1, "Only Title")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, title)
-
-    # ── geometry ─────────────────────────────────────────────────────
-    MX, MY   = 1.00, 1.55   # content area top-left margin
-    EX, EY   = 12.33, 6.75  # content area bottom-right edge
-    MID_X    = (MX + EX) / 2        # 6.665"
-    MID_Y    = (MY + EY) / 2        # 4.15" → nudge down slightly
-    MID_Y    = 4.05
-    BOX      = 1.65                  # center badge side length
-    PAD      = 0.20                  # gap between divider line and text
-
-    # ── cross lines (drawn first so badge sits on top) ────────────────
-    for (x1, y1, x2, y2) in [
-        (MX, MID_Y, EX, MID_Y),          # horizontal
-        (MID_X, MY,  MID_X, EY),         # vertical
-    ]:
-        conn = slide.shapes.add_connector(
-            MSO_CONNECTOR_TYPE.STRAIGHT,
-            Inches(x1), Inches(y1), Inches(x2), Inches(y2),
-        )
-        conn.line.color.rgb = GRAY3
-        conn.line.width = Pt(0.75)
-
-    # ── center badge ──────────────────────────────────────────────────
-    bx, by = MID_X - BOX / 2, MID_Y - BOX / 2
-    badge = slide.shapes.add_shape(
-        ROUNDED_RECTANGLE, Inches(bx), Inches(by), Inches(BOX), Inches(BOX),
-    )
-    badge.fill.solid()
-    badge.fill.fore_color.rgb = RED
-    badge.line.fill.background()
-    tf = badge.text_frame
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
-    run = p.add_run()
-    run.text = center_label
-    run.font.name  = "Onest SemiBold"
-    run.font.size  = Pt(20)
-    run.font.color.rgb = WHITE
-
-    # ── quadrant text areas ───────────────────────────────────────────
-    wL = MID_X - MX - PAD         # width of left quadrants
-    wR = EX - MID_X - PAD         # width of right quadrants
-    hT = MID_Y - MY - PAD         # height of top quadrants
-    hB = EY - MID_Y - PAD         # height of bottom quadrants
-
-    positions = [
-        (MX,          MY,          wL, hT),   # top-left
-        (MID_X + PAD, MY,          wR, hT),   # top-right
-        (MX,          MID_Y + PAD, wL, hB),   # bottom-left
-        (MID_X + PAD, MID_Y + PAD, wR, hB),   # bottom-right
-    ]
-
-    for (x, y, w, h), (header, body) in zip(positions, quadrants):
-        txb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
-        tf  = txb.text_frame
-        tf.word_wrap = True
-        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-
-        p = tf.paragraphs[0]
-        p.alignment = PP_ALIGN.LEFT
-        run = p.add_run()
-        run.text = header
-        run.font.name  = "Onest"
-        run.font.size  = Pt(10)
-        run.font.color.rgb = GRAY1
-
-        p2 = tf.add_paragraph()
-        p2.alignment = PP_ALIGN.LEFT
-        run2 = p2.add_run()
-        run2.text = body
-        run2.font.name  = "Onest SemiBold"
-        run2.font.size  = Pt(14)
-        run2.font.color.rgb = WHITE
-
-    return slide
-
-
-# ── Section 3 helpers ────────────────────────────────────────────────────────
-
 def _inject_arrow(slide, x_in, y_in, size_in, color_hex, rotate_180=False):
     """
     Inject a custom-geometry arrow shape (Slide-46 template style) via raw XML.
@@ -705,138 +442,6 @@ def _inject_arrow(slide, x_in, y_in, size_in, color_hex, rotate_180=False):
     slide.shapes._spTree.append(etree.fromstring(xml.encode()))
 
 
-def add_npu_pros_cons_slide(prs):
-    """
-    S3.1 — Audio on the NPU: Pros & Cons.
-    Adapted from QNX Slide Library slide 46 (Gain & Loss layout):
-      green outlined box + up-arrow  → Pros row (quoted source stat)
-      red   outlined box + down-arrow → Cons row (placeholder)
-    """
-    lyt   = get_layout(prs, 1, "Only Title")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Audio on the NPU — Pros & Cons")
-
-    # ── geometry (mirrors Slide Library slide 46 exactly) ─────────
-    BOX_X, BOX_W, BOX_H = 0.68, 1.89, 1.89
-    ARR_W                = 0.87
-    ARR_X                = BOX_X + (BOX_W - ARR_W) / 2   # 1.19" centred in box
-    TXT_X, TXT_W, TXT_H = 3.20, 9.45, 2.13
-    PRO_Y, CON_Y         = 1.94, 4.70
-    DIV_Y                = 4.26
-
-    # ── Pros: green outlined box ──────────────────────────────────
-    pro_box = slide.shapes.add_shape(
-        ROUNDED_RECTANGLE, Inches(BOX_X), Inches(PRO_Y), Inches(BOX_W), Inches(BOX_H)
-    )
-    pro_box.fill.background()
-    pro_box.line.color.rgb = GREEN
-    pro_box.line.width = Pt(1.5)
-
-    _inject_arrow(slide, ARR_X, PRO_Y + (BOX_H - ARR_W) / 2, ARR_W, "06CA5F", rotate_180=True)
-
-    # ── Pros: quote text ──────────────────────────────────────────
-    pro_txb = slide.shapes.add_textbox(
-        Inches(TXT_X), Inches(PRO_Y), Inches(TXT_W), Inches(TXT_H)
-    )
-    tf = pro_txb.text_frame
-    tf.word_wrap = True
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.LEFT
-    run = p.add_run()
-    run.text = (
-        "“NPUs shine with low-latency, single-inference tasks — think real-time audio cleanup "
-        "or live transcription during video calls. One client in the film industry reduced "
-        "their audio processing time by over 70%…”"
-    )
-    run.font.name   = "Onest"
-    run.font.size   = Pt(13)
-    run.font.italic = True
-    run.font.color.rgb = WHITE
-
-    # ── Divider line ──────────────────────────────────────────────
-    conn = slide.shapes.add_connector(
-        MSO_CONNECTOR_TYPE.STRAIGHT,
-        Inches(TXT_X), Inches(DIV_Y), Inches(TXT_X + TXT_W), Inches(DIV_Y),
-    )
-    conn.line.color.rgb = GRAY3
-    conn.line.width = Pt(0.75)
-
-    # ── Cons: red outlined box ────────────────────────────────────
-    con_box = slide.shapes.add_shape(
-        ROUNDED_RECTANGLE, Inches(BOX_X), Inches(CON_Y), Inches(BOX_W), Inches(BOX_H)
-    )
-    con_box.fill.background()
-    con_box.line.color.rgb = REDCON
-    con_box.line.width = Pt(1.5)
-
-    _inject_arrow(slide, ARR_X, CON_Y + (BOX_H - ARR_W) / 2, ARR_W, "E4203C", rotate_180=False)
-
-    # ── Cons: quoted source stat + original point ─────────────────
-    con_txb = slide.shapes.add_textbox(
-        Inches(TXT_X), Inches(CON_Y), Inches(TXT_W), Inches(TXT_H)
-    )
-    tf = con_txb.text_frame
-    tf.word_wrap = True
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.LEFT
-    run = p.add_run()
-    run.text   = "“memory bandwidth matters more than raw compute " \
-                 "for many NPU workloads”"
-    run.font.name   = "Onest"
-    run.font.size   = Pt(13)
-    run.font.italic = True
-    run.font.color.rgb = WHITE
-
-    p2 = tf.add_paragraph()
-    p2.alignment = PP_ALIGN.LEFT
-    run2 = p2.add_run()
-    run2.text = "Added complexity of communication between the CPU and NPU"
-    run2.font.name  = "Onest"
-    run2.font.size  = Pt(13)
-    run2.font.color.rgb = WHITE
-
-    # ── Source footnote ───────────────────────────────────────────
-    add_label(
-        slide, 0.68, 6.78, 11.97, 0.22,
-        "Source: ordinarytech.ca — On-device AI in 2026: How NPUs are Transforming AI PCs for Creators and Power Users",
-        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
-        url="https://ordinarytech.ca/blogs/news/on-device-ai-in-2026-how-npus-are-transforming-ai-pcs-for-creators-and-power-users-1",
-    )
-
-    return slide
-
-
-# ── Section 2 slides ─────────────────────────────────────────────────────────
-
-def add_qnx_everywhere_slide(prs):
-    """S2.1 — QNX Everywhere initiative: JUCE as a natural porting target."""
-    lyt   = get_layout(prs, 1, "One Content")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "QNX Everywhere")
-    set_content_ph(slide, 1,
-        "QNX's initiative to run on any CPU, any board, any use case",
-        [
-            "Elk Audio OS already runs headless JUCE on a real-time OS — "
-            "that part is solved",
-            "Our contribution: full graphics support — "
-            "JUCE with its complete UI running on QNX",
-            "SurgeXT with its full interface on a Raspberry Pi 5 running QNX "
-            "is the proof",
-            "The port is the foundation — everything else in this talk builds on it",
-        ],
-    )
-    # QNX Everywhere logo lockup — bottom-right corner (1058×204 native, ratio ~5.18:1)
-    # Recolour black fills to white so the lockup is legible on the dark background.
-    logo = os.path.join(SLIDES_DIR, "qnx-everywhere-logo-lockup.svg")
-    if os.path.exists(logo):
-        add_svg_image(slide, logo, left_in=0.68, top_in=6.60, width_in=2.70, height_in=0.52,
-                      fill_subs={b'fill="black"': b'fill="white"'})
-    return slide
-
-
 def _patch_video_timing(slide, autoplay=True, fullscreen=True):
     """
     Modify the <p:timing> that add_movie() already wrote onto the slide.
@@ -857,6 +462,101 @@ def _patch_video_timing(slide, autoplay=True, fullscreen=True):
                 cond.set("delay", "0")
 
 
+# ── generic slide generators (called by the sNN wrappers below) ───────────────
+def add_divider(prs, chapter_num, title):
+    """Dark-theme chapter divider slide."""
+    lyt   = get_layout(prs, 1, "Divider")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0,  title)
+    set_ph(slide, 13, f"Section {chapter_num}.")
+    return slide
+
+
+def add_quadrant_slide(prs, title, center_label, quadrants):
+    """
+    Recreates the Slide Library slide-44 'status report' layout:
+      - thin cross lines dividing the content area into four quadrants
+      - a filled rounded-square badge at the intersection (center_label)
+      - four text areas, each with a small GRAY1 header + larger WHITE body
+    quadrants = [(header, body), ...] in order: top-left, top-right,
+                                                bottom-left, bottom-right
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, title)
+
+    MX, MY   = 1.00, 1.55
+    EX, EY   = 12.33, 6.75
+    MID_X    = (MX + EX) / 2
+    MID_Y    = 4.05
+    BOX      = 1.65
+    PAD      = 0.20
+
+    for (x1, y1, x2, y2) in [
+        (MX, MID_Y, EX, MID_Y),
+        (MID_X, MY,  MID_X, EY),
+    ]:
+        conn = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            Inches(x1), Inches(y1), Inches(x2), Inches(y2),
+        )
+        conn.line.color.rgb = GRAY3
+        conn.line.width = Pt(0.75)
+
+    bx, by = MID_X - BOX / 2, MID_Y - BOX / 2
+    badge = slide.shapes.add_shape(
+        ROUNDED_RECTANGLE, Inches(bx), Inches(by), Inches(BOX), Inches(BOX),
+    )
+    badge.fill.solid()
+    badge.fill.fore_color.rgb = RED
+    badge.line.fill.background()
+    tf = badge.text_frame
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    run = p.add_run()
+    run.text = center_label
+    run.font.name  = "Onest SemiBold"
+    run.font.size  = Pt(20)
+    run.font.color.rgb = WHITE
+
+    wL = MID_X - MX - PAD
+    wR = EX - MID_X - PAD
+    hT = MID_Y - MY - PAD
+    hB = EY - MID_Y - PAD
+
+    positions = [
+        (MX,          MY,          wL, hT),
+        (MID_X + PAD, MY,          wR, hT),
+        (MX,          MID_Y + PAD, wL, hB),
+        (MID_X + PAD, MID_Y + PAD, wR, hB),
+    ]
+
+    for (x, y, w, h), (header, body) in zip(positions, quadrants):
+        txb = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(w), Inches(h))
+        tf  = txb.text_frame
+        tf.word_wrap = True
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.LEFT
+        run = p.add_run()
+        run.text = header
+        run.font.name  = "Onest"
+        run.font.size  = Pt(10)
+        run.font.color.rgb = GRAY1
+
+        p2 = tf.add_paragraph()
+        p2.alignment = PP_ALIGN.LEFT
+        run2 = p2.add_run()
+        run2.text = body
+        run2.font.name  = "Onest SemiBold"
+        run2.font.size  = Pt(14)
+        run2.font.color.rgb = WHITE
+
+    return slide
+
+
 def add_video_slide(prs, video_path, title=None, poster_path=None):
     """
     Embed a video centred in the slide with an optional poster frame.
@@ -869,7 +569,6 @@ def add_video_slide(prs, video_path, title=None, poster_path=None):
     slide = prs.slides.add_slide(lyt)
 
     if title is None:
-        # Delete the title placeholder so the slide is a clean canvas.
         for ph in list(slide.placeholders):
             if ph.placeholder_format.idx == 0:
                 ph._element.getparent().remove(ph._element)
@@ -877,7 +576,6 @@ def add_video_slide(prs, video_path, title=None, poster_path=None):
     else:
         set_ph(slide, 0, title)
 
-    # ── video geometry (70% width, 16:9, centred in full slide) ──────
     VW = Inches(9.0)
     VH = Inches(5.06)   # 16:9
     VX = (Inches(13.33) - VW) / 2
@@ -891,10 +589,7 @@ def add_video_slide(prs, video_path, title=None, poster_path=None):
         )
         _patch_video_timing(slide, autoplay=True, fullscreen=True)
     else:
-        # Stand-in box until the real video is dropped in
-        box = slide.shapes.add_shape(
-            ROUNDED_RECTANGLE, VX, VY, VW, VH,
-        )
+        box = slide.shapes.add_shape(ROUNDED_RECTANGLE, VX, VY, VW, VH)
         box.fill.solid()
         box.fill.fore_color.rgb = GRAY3
         box.line.color.rgb      = GRAY1
@@ -912,7 +607,143 @@ def add_video_slide(prs, video_path, title=None, poster_path=None):
     return slide
 
 
-def add_juce_porting_lessons_slide(prs):
+# ── slides s01 – s29 (+ future s30+ for Section 6) ───────────────────────────
+
+def add_s01_title(prs):
+    lyt   = get_layout(prs, 1, "Title | Quadrant Bar")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0,  "TX/RX Part 2:\nAI Audio on the Raspberry Pi")
+    set_ph(slide, 1,  "Audio Developer Conference Japan 2026")
+    set_ph(slide, 10, "Kieran Coulter | Principal Systems Software Developer - Audio")
+    return slide
+
+
+def add_s03_agenda(prs):
+    """
+    Agenda as a borderless 6×2 table on 'Only Title' canvas.
+    Col 0: "Section X." in QNX red, right-aligned (narrow)
+    Col 1: section name in white Onest SemiBold, left-aligned (wide)
+    Time allotments live in presentation_outline.md, not on this slide.
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Agenda")
+
+    ROWS = 6
+    T_LEFT = Inches(1.20)
+    T_TOP  = Inches(1.55)
+    T_W    = Inches(10.93)
+    T_H    = Inches(5.30)
+    COL0_W = Inches(2.30)
+    COL1_W = Inches(8.63)
+
+    tbl = slide.shapes.add_table(ROWS, 2, T_LEFT, T_TOP, T_W, T_H).table
+    tbl.columns[0].width = COL0_W
+    tbl.columns[1].width = COL1_W
+    tbl.first_row = False
+
+    chapters = [
+        ("Section 1.", "The Story So Far"),
+        ("Section 2.", "JUCE on QNX"),
+        ("Section 3.", "Audio on the NPU"),
+        ("Section 4.", "Developing Host-First"),
+        ("Section 5.", "Getting to the Target"),
+        ("Section 6.", "From R&D to Production"),
+    ]
+
+    for r, (num, name) in enumerate(chapters):
+        c0 = tbl.cell(r, 0)
+        c0.fill.background()
+        c0.margin_right = Inches(0.25)
+        _cell_text(c0, num,  RED,   font_size=13, align=PP_ALIGN.RIGHT)
+
+        c1 = tbl.cell(r, 1)
+        c1.fill.background()
+        _cell_text(c1, name, WHITE, font_size=20, font_name="Onest SemiBold")
+
+    _style_table_borders(tbl)
+    return slide
+
+
+def add_s04_divider_s1(prs):
+    return add_divider(prs, 1, "The Story So Far")
+
+
+def add_s05_recap_adc21(prs):
+    return add_quadrant_slide(
+        prs,
+        title="Recap",
+        center_label="ADC'21",
+        quadrants=[
+            ("Audience",
+             "Beginner-friendly — no embedded or cross-compilation experience required"),
+            ("Hardware",
+             "Raspberry Pi 4 · Raspberry Pi OS · JUCE apps and plugins compiled on-device"),
+            ("The Trick",
+             "Mount the RPi filesystem over SSH — skip cross-compilation entirely"),
+            ("The Lesson",
+             "Get something running first. Optimise the dev workflow when you actually need to"),
+        ],
+    )
+
+
+def add_s06_recap_adcx23(prs):
+    return add_quadrant_slide(
+        prs,
+        title="Recap",
+        center_label="ADCx'23",
+        quadrants=[
+            ("The Project",
+             "NeuralPlayer — a host-side pipeline combining Stem Separation and Audio-to-MIDI conversion models"),
+            ("The Philosophy",
+             "Pure R&D belongs on the host: no target hardware, no cross-compilation, no embedded constraints"),
+            ("The Lesson",
+             "The further towards Research on the R&D spectrum, the more premature target work costs in friction"),
+            ("Coming in Future Talk",
+             "NeuralPlayer didn't stop here — a future talk will reveal where this project went next"),
+        ],
+    )
+
+
+def add_s07_divider_s2(prs):
+    return add_divider(prs, 2, "JUCE on QNX")
+
+
+def add_s08_qnx_everywhere(prs):
+    """S2.1 — QNX Everywhere initiative: JUCE as a natural porting target."""
+    lyt   = get_layout(prs, 1, "One Content")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "QNX Everywhere")
+    set_content_ph(slide, 1,
+        "QNX's initiative to run on any CPU, any board, any use case",
+        [
+            "Elk Audio OS already runs headless JUCE on a real-time OS — "
+            "that part is solved",
+            "Our contribution: full graphics support — "
+            "JUCE with its complete UI running on QNX",
+            "SurgeXT with its full interface on a Raspberry Pi 5 running QNX "
+            "is the proof",
+            "The port is the foundation — everything else in this talk builds on it",
+        ],
+    )
+    # QNX Everywhere logo lockup — bottom-left, flush with content text (1058×204, ratio ~5.18:1)
+    # Black fills recoloured to white so the lockup is legible on the dark background.
+    logo = os.path.join(SLIDES_DIR, "qnx-everywhere-logo-lockup.svg")
+    if os.path.exists(logo):
+        add_svg_image(slide, logo, left_in=0.68, top_in=6.60, width_in=2.70, height_in=0.52,
+                      fill_subs={b'fill="black"': b'fill="white"'})
+    return slide
+
+
+def add_s09_it_works(prs):
+    """S2.2 — Video: SurgeXT running on QNX. No title; auto-plays fullscreen."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
+    )
+
+
+def add_s10_juce_porting_lessons(prs):
     """S2.3 — What was quick vs what was genuinely hard in the JUCE port."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -938,7 +769,7 @@ def add_juce_porting_lessons_slide(prs):
     return slide
 
 
-def add_screen_framework_slide(prs):
+def add_s11_screen_framework(prs):
     """
     S2.4 — Architecture diagram: how JUCE connects to the QNX Screen Framework.
 
@@ -947,27 +778,20 @@ def add_screen_framework_slide(prs):
 
     Three columns (left → right):
       Windowing path  |  Event dispatch path  |  OpenGL / rendering path
-
-    Connections mirror the actual code: QnxComponentPeer creates screen_window_t,
-    SharedQnxScreenEventThread polls screen_get_event() on screen_context_t,
-    OpenGLContext::NativeContext attaches an EGL surface to the same screen_window_t.
     """
     lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0, "JUCE ↔ QNX: The Screen Architecture")
 
-    # ── geometry ──────────────────────────────────────────────────────────
-    # Three equal columns across the content area (x 0.68 → 12.65, w 11.97")
-    NW     = 3.65                      # node width (all columns equal)
-    COL_X  = [0.68, 4.67, 8.66]       # left edge of each column
-    CX     = [x + NW / 2 for x in COL_X]   # horizontal centre of each column
+    NW     = 3.65
+    COL_X  = [0.68, 4.67, 8.66]
+    CX     = [x + NW / 2 for x in COL_X]
 
-    ROW_Y  = [1.90, 3.20, 4.50]       # top edge of each row
-    NH     = [0.68, 0.80, 0.90]       # row node heights
+    ROW_Y  = [1.90, 3.20, 4.50]
+    NH     = [0.68, 0.80, 0.90]
 
-    SEP_Y  = [2.95, 4.28]             # band-separator line y values
+    SEP_Y  = [2.95, 4.28]
 
-    # ── band separator lines ───────────────────────────────────────────────
     for sy in SEP_Y:
         c = slide.shapes.add_connector(
             MSO_CONNECTOR_TYPE.STRAIGHT,
@@ -976,7 +800,6 @@ def add_screen_framework_slide(prs):
         c.line.color.rgb = GRAY3
         c.line.width = Pt(0.5)
 
-    # ── band labels ────────────────────────────────────────────────────────
     add_label(slide, 0.68, 1.70, 5.0, 0.18,
               "JUCE APPLICATION", GRAY1, font_size=7.5, bold=True)
     add_label(slide, 0.68, 2.98, 8.5, 0.18,
@@ -987,14 +810,11 @@ def add_screen_framework_slide(prs):
     add_label(slide, COL_X[2], 4.31, NW, 0.18,
               "EGL / OpenGL ES", PURPLE, font_size=7.5, bold=True)
 
-    # ── Row 1 — JUCE Application (GRAY3) ──────────────────────────────────
     add_node(slide, COL_X[0], ROW_Y[0], NW, NH[0],
              ["juce::Component"], GRAY3, font_size=14)
-    # centre column intentionally empty in row 1
     add_node(slide, COL_X[2], ROW_Y[0], NW, NH[0],
              ["juce::OpenGLContext"], GRAY3, font_size=14)
 
-    # ── Row 2 — Our port implementation (RED / RED2) ───────────────────────
     add_node(slide, COL_X[0], ROW_Y[1], NW, NH[1],
              ["QnxComponentPeer", "(: ComponentPeer)"], RED, font_size=11)
     add_node(slide, COL_X[1], ROW_Y[1], NW, NH[1],
@@ -1002,7 +822,6 @@ def add_screen_framework_slide(prs):
     add_node(slide, COL_X[2], ROW_Y[1], NW, NH[1],
              ["OpenGLContext::", "NativeContext"], RED, font_size=11)
 
-    # ── Row 3 — OS / API layer: dark fill + coloured border ───────────────
     def _os_node(x, y, w, h, lines, border, fs=10):
         sh = slide.shapes.add_shape(
             ROUNDED_RECTANGLE, Inches(x), Inches(y), Inches(w), Inches(h)
@@ -1031,18 +850,12 @@ def add_screen_framework_slide(prs):
     _os_node(COL_X[2], ROW_Y[2], NW, NH[2],
              ["EGLDisplay + EGLSurface", "+ eglSwapBuffers()"], PURPLE)
 
-    # ── Vertical connectors ────────────────────────────────────────────────
-    # Left column: Component → QnxComponentPeer → screen_context_t
     add_vline(slide, CX[0], ROW_Y[0] + NH[0], ROW_Y[1], GRAY1, 1.0)
     add_vline(slide, CX[0], ROW_Y[1] + NH[1], ROW_Y[2], GRAY1, 1.0)
-    # Right column: OpenGLContext → NativeContext → EGLSurface
     add_vline(slide, CX[2], ROW_Y[0] + NH[0], ROW_Y[1], GRAY1, 1.0)
     add_vline(slide, CX[2], ROW_Y[1] + NH[1], ROW_Y[2], GRAY1, 1.0)
-    # Centre column: SharedEventThread → screen_context_t
-    # (EventThread holds a ref to screen_context_t via SharedQnxScreenContext)
     add_vline(slide, CX[1], ROW_Y[1] + NH[1], ROW_Y[2], GRAY1, 1.0)
 
-    # ── Horizontal: QnxComponentPeer ↔ SharedEventThread (registerWindow) ─
     mid_r2 = ROW_Y[1] + NH[1] / 2
     h_conn = slide.shapes.add_connector(
         MSO_CONNECTOR_TYPE.STRAIGHT,
@@ -1052,22 +865,359 @@ def add_screen_framework_slide(prs):
     h_conn.line.color.rgb = GRAY1
     h_conn.line.width     = Pt(1.0)
 
-    # ── Relationship micro-labels ──────────────────────────────────────────
     add_label(slide, CX[0] - 0.80, ROW_Y[0] + NH[0] + 0.02, 1.60, 0.20,
               "createPeer()", GRAY1, font_size=7)
     add_label(slide, CX[2] - 0.80, ROW_Y[0] + NH[0] + 0.02, 1.60, 0.20,
               "attaches to", GRAY1, font_size=7)
     add_label(slide, COL_X[0] + NW + 0.02, mid_r2 - 0.22, 0.90, 0.20,
               "register", GRAY1, font_size=6.5)
-    # NativeContext calls peer->getNativeHandle() to get screen_window_t —
-    # noted as a sub-label below NativeContext rather than a diagonal line
     add_label(slide, CX[2] - 1.10, ROW_Y[1] + NH[1] + 0.03, 2.20, 0.20,
               "↓ getNativeHandle() → screen_window_t", PURPLE, font_size=7)
 
     return slide
 
 
-def add_midi_osc_bridge_slide(prs):
+def add_s12_tracktion_engine(prs):
+    """S2.6 — Tracktion Engine on QNX: hinting at internal automotive eval use."""
+    lyt   = get_layout(prs, 1, "One Content")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Bonus: Tracktion Engine on QNX")
+    set_content_ph(slide, 1,
+        "Timeline-based audio engine running on target useful for eval",
+        [
+            "“Why You Shouldn’t Write a DAW” — "
+            "David Rowland, ADC23 — exactly how we’re thinking about this",
+            "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
+            "to automotive data buses than MIDI ever was",
+            "OSC is then a placeholder for real automotive data streams like VIN",
+        ],
+    )
+    add_label(
+        slide, 0.68, 6.78, 11.97, 0.22,
+        "Ref: youtube.com/watch?v=GMlnh6_9aTc",
+        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
+        url="https://www.youtube.com/watch?v=GMlnh6_9aTc",
+    )
+    return slide
+
+
+def add_s13_divider_s3(prs):
+    return add_divider(prs, 3, "Audio on the NPU")
+
+
+def add_s14_npu_pros_cons(prs):
+    """
+    S3.1 — Audio on the NPU: Pros & Cons.
+    Adapted from QNX Slide Library slide 46 (Gain & Loss layout).
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Audio on the NPU — Pros & Cons")
+
+    BOX_X, BOX_W, BOX_H = 0.68, 1.89, 1.89
+    ARR_W                = 0.87
+    ARR_X                = BOX_X + (BOX_W - ARR_W) / 2
+    TXT_X, TXT_W, TXT_H = 3.20, 9.45, 2.13
+    PRO_Y, CON_Y         = 1.94, 4.70
+    DIV_Y                = 4.26
+
+    pro_box = slide.shapes.add_shape(
+        ROUNDED_RECTANGLE, Inches(BOX_X), Inches(PRO_Y), Inches(BOX_W), Inches(BOX_H)
+    )
+    pro_box.fill.background()
+    pro_box.line.color.rgb = GREEN
+    pro_box.line.width = Pt(1.5)
+
+    _inject_arrow(slide, ARR_X, PRO_Y + (BOX_H - ARR_W) / 2, ARR_W, "06CA5F", rotate_180=True)
+
+    pro_txb = slide.shapes.add_textbox(
+        Inches(TXT_X), Inches(PRO_Y), Inches(TXT_W), Inches(TXT_H)
+    )
+    tf = pro_txb.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.LEFT
+    run = p.add_run()
+    run.text = (
+        "“NPUs shine with low-latency, single-inference tasks — think real-time audio cleanup "
+        "or live transcription during video calls. One client in the film industry reduced "
+        "their audio processing time by over 70%…”"
+    )
+    run.font.name   = "Onest"
+    run.font.size   = Pt(13)
+    run.font.italic = True
+    run.font.color.rgb = WHITE
+
+    conn = slide.shapes.add_connector(
+        MSO_CONNECTOR_TYPE.STRAIGHT,
+        Inches(TXT_X), Inches(DIV_Y), Inches(TXT_X + TXT_W), Inches(DIV_Y),
+    )
+    conn.line.color.rgb = GRAY3
+    conn.line.width = Pt(0.75)
+
+    con_box = slide.shapes.add_shape(
+        ROUNDED_RECTANGLE, Inches(BOX_X), Inches(CON_Y), Inches(BOX_W), Inches(BOX_H)
+    )
+    con_box.fill.background()
+    con_box.line.color.rgb = REDCON
+    con_box.line.width = Pt(1.5)
+
+    _inject_arrow(slide, ARR_X, CON_Y + (BOX_H - ARR_W) / 2, ARR_W, "E4203C", rotate_180=False)
+
+    con_txb = slide.shapes.add_textbox(
+        Inches(TXT_X), Inches(CON_Y), Inches(TXT_W), Inches(TXT_H)
+    )
+    tf = con_txb.text_frame
+    tf.word_wrap = True
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.LEFT
+    run = p.add_run()
+    run.text   = "“memory bandwidth matters more than raw compute " \
+                 "for many NPU workloads”"
+    run.font.name   = "Onest"
+    run.font.size   = Pt(13)
+    run.font.italic = True
+    run.font.color.rgb = WHITE
+
+    p2 = tf.add_paragraph()
+    p2.alignment = PP_ALIGN.LEFT
+    run2 = p2.add_run()
+    run2.text = "Added complexity of communication between the CPU and NPU"
+    run2.font.name  = "Onest"
+    run2.font.size  = Pt(13)
+    run2.font.color.rgb = WHITE
+
+    add_label(
+        slide, 0.68, 6.78, 11.97, 0.22,
+        "Source: ordinarytech.ca — On-device AI in 2026: How NPUs are Transforming AI PCs for Creators and Power Users",
+        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
+        url="https://ordinarytech.ca/blogs/news/on-device-ai-in-2026-how-npus-are-transforming-ai-pcs-for-creators-and-power-users-1",
+    )
+
+    return slide
+
+
+def add_s15_hailo_hardware(prs):
+    """
+    S3.2 — NPU bring-up: three steps from Windows CPU-only → Ubuntu NPU dev
+    → RPi5 target deployment.  A return arrow shows that Hailo support was
+    eventually added back to the Windows starting point, completing the circle.
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Hailo 10-H: NPU Bring-Up")
+
+    # ── geometry: 3 wider cards ───────────────────────────────────────
+    xs     = [0.68, 4.88, 9.08]
+    w, h   = 3.56, 4.00
+    y      = 2.10
+    AW, AH = 0.55, 0.28
+    gap    = xs[1] - xs[0] - w   # 0.64"
+
+    cards = [
+        (1, "Windows Host", "Windows 11",
+         ["whisper.cpp on CPU — first working prototype",
+          "No NPU in the loop initially",
+          "CPU-based voice API for bridge tool coded here",
+          "Hailo backend deliberately disabled"], RED),
+        (2, "Ubuntu Dev Host", "Native Linux",
+         ["Hailo M.2 in the dev laptop",
+          "HailoRT SDK and arm64 sysroot configured",
+          "NPU inference integrated into the Bridge",
+          "Full pipeline validated on the host first"], RED),
+        (3, "Ubuntu Target", "Raspberry Pi 5",
+         ["Same Hailo-10H, now on target",
+          "Hailo-10H over PCIe via Geekworm X1001",
+          "Host pipeline moves to target unchanged",
+          "NPU bring-up complete"], RED),
+    ]
+
+    for x, card in zip(xs, cards):
+        _add_support_card(slide, x, y, w, h, *card)
+
+    # ── forward arrows (Step 1 → 2 → 3) ──────────────────────────────
+    for i in range(2):
+        arr_x = xs[i] + w + (gap - AW) / 2
+        arr_y = y + (h - AH) / 2
+        add_arrow(slide, arr_x, arr_y, AW, AH, GRAY1)
+
+    # ── U-shape return arrow (card 3 → card 1 below the cards) ───────
+    y_bot  = y + h           # 6.10"
+    y_run  = y_bot + 0.30    # 6.40" — horizontal run below cards
+    cx3    = xs[2] + w / 2   # centre of card 3: ~10.86"
+    cx1    = xs[0] + w / 2   # centre of card 1: ~2.46"
+
+    for (x1, y1, x2, y2) in [
+        (cx3, y_bot, cx3, y_run),    # drop from card 3
+        (cx3, y_run, cx1, y_run),    # run left
+        (cx1, y_run, cx1, y_bot),    # rise toward card 1
+    ]:
+        seg = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            Inches(x1), Inches(y1), Inches(x2), Inches(y2),
+        )
+        seg.line.color.rgb = RED
+        seg.line.width = Pt(1.5)
+
+    # Arrowhead on the final segment (tail = top, pointing into card 1)
+    from pptx.oxml.ns import qn as _qn
+    import lxml.etree as _etree
+    ln = seg.line._ln
+    if ln is not None:
+        tail = _etree.SubElement(ln, _qn('a:tailEnd'))
+        tail.set('type', 'arrow')
+        tail.set('w', 'med')
+        tail.set('len', 'med')
+
+    add_label(
+        slide,
+        cx1 - 0.40, y_run + 0.10, cx3 - cx1 + 0.80, 0.26,
+        "Bonus: Hailo support added to Windows",
+        RED, font_size=9, align=PP_ALIGN.CENTER,
+    )
+
+    return slide
+
+
+def add_s16_qnx_hailo_status(prs):
+    """S3.3 — Why QNX isn't in the Hailo bring-up story: 10H not yet supported."""
+    lyt   = get_layout(prs, 1, "One Content")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "QNX NPU Status")
+    set_content_ph(slide, 1,
+        "QNX supports Hailo-8 and Hailo-8L today",
+        [
+            "Hailo-10H support coming in future package",
+        ],
+    )
+    return slide
+
+
+def add_s17_npu_speed_result(prs):
+    """S3.3 — The headline result: CPU vs Hailo 10-H on Whisper inference."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Faster on the NPU")
+    set_content_ph(slide, 1,
+        "Whisper on Target CPU — baseline",
+        [
+            "Transcription latency: ~3 seconds per command",
+            "RPi5 ARM core peak/median load less predictable",
+            "SurgeXT audio competes for the same cores",
+            "Contention could cause artifacts at lower buffer sizes",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "Whisper on Hailo 10-H",
+        [
+            "Transcription latency: ~300 milliseconds per command",
+            "CPU load deterministic as before",
+            "Relative to number of active voices",
+            "Lowest buffer size RPi5 is capable of once again possible",
+        ],
+    )
+    return slide
+
+
+def add_s18_divider_s4(prs):
+    return add_divider(prs, 4, "Developing Host-First")
+
+
+def add_s19_whispercpp_testbench(prs):
+    """S4.1 — SurgeMIDIToOSCBridge: one combined tool serving two distinct roles."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "SurgeMIDIToOSCBridge: One Tool, Two Roles")
+    set_content_ph(slide, 1,
+        "Role 1: MIDI → OSC",
+        [
+            "MIDI has no role in automotive — QNX doesn’t support it",
+            "Bridge translates controller MIDI input to OSC messages",
+            "SurgeXT already speaks OSC natively — no synth changes needed",
+            "Solves the QNX MIDI gap without touching the target",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "Role 2: Voice API Prototype",
+        [
+            "whisper.cpp integrated into the same binary",
+            "Develop and validate the voice pipeline on the Host",
+            "Same binary deploys to the Target unchanged",
+            "One tool, both roles — convenience, not architecture",
+        ],
+    )
+    return slide
+
+
+def add_s20_testbench_video(prs):
+    """S4.2 — Video: Bridge running on host CPU (shoot late, wait for polished GUI)."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
+        title="Bridge Running on Host CPU",
+    )
+
+
+def add_s21_midi_osc_features(prs):
+    """S4.3 — MIDI mode of the Bridge: mapped to the real SurgeXT OSC spec."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Bridge: MIDI → OSC Feature Set")
+    set_content_ph(slide, 1,
+        "Notes & Expressive Control",
+        [
+            "Note On/Off + velocity → /mnote/{on|off}",
+            "Pitch bend → /pbend  ·  aftertouch → /chan_at",
+            "CCs → /cc/N  (full 128-CC configurable mapping)",
+            "Note expressions → /ne/{pitch|volume|pan|timbre|pressure}",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "Patch Navigation",
+        [
+            "Bank + Program Change → /patch/load",
+            "Increment / decrement → /patch/{incr|decr}",
+            "Category step → /patch/{incr|decr}_category",
+            "All Notes Off → /allnotesoff",
+        ],
+    )
+    return slide
+
+
+def add_s22_voice_api_features(prs):
+    """S4.4 — Voice API mode of the Bridge: mapped to the real SurgeXT OSC spec."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Bridge: Voice API Feature Set")
+    set_content_ph(slide, 1,
+        "Patch Control",
+        [
+            "Load patch by name → /patch/load [name]",
+            "Step through patches → /patch/{incr|decr}",
+            "Browse by category → /patch/{incr|decr}_category",
+            "Surprise me → /patch/random",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "Sound Shaping",
+        [
+            "Named macros 1–8 → /param/macro/N  (\"more brightness\")",
+            "Global volume → /param/global/volume",
+            "FX bypass by slot → /param/fx/{scene}/{slot}/deactivate",
+            "Any parameter by OSC address → /param/...",
+        ],
+    )
+    return slide
+
+
+def add_s23_divider_s5(prs):
+    return add_divider(prs, 5, "Getting to the Target")
+
+
+def add_s24_midi_osc_bridge(prs):
     """
     S5.1 — The Bridge as the vehicle that 'got to the target'.
     Host-side NPU access + 3 identical chips = incremental dev without
@@ -1104,43 +1254,66 @@ def add_midi_osc_bridge_slide(prs):
     return slide
 
 
-def add_tracktion_engine_slide(prs):
-    """S2.6 — Tracktion Engine on QNX: the engine underneath, not a DAW."""
-    lyt   = get_layout(prs, 1, "One Content")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Bonus: Tracktion Engine on QNX")
-    set_content_ph(slide, 1,
-        "Timeline-based audio engine running on target useful for eval",
-        [
-            "“Why You Shouldn’t Write a DAW” — "
-            "David Rowland, ADC23 — exactly how we’re thinking about this",
-            "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
-            "to automotive data buses than MIDI ever was",
-            "OSC is then a placeholder for real automotive data streams like VIN",
-        ],
-    )
-    add_label(
-        slide, 0.68, 6.78, 11.97, 0.22,
-        "Ref: youtube.com/watch?v=GMlnh6_9aTc",
-        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
-        url="https://www.youtube.com/watch?v=GMlnh6_9aTc",
-    )
-    return slide
-
-
-# ── Section 2 slides ─────────────────────────────────────────────────────────
-
-def add_signal_chain_full_target_slide(prs):
+def add_s25_host_target_support_matrix(prs):
     """
-    Same six nodes as add_signal_chain_slide, but ALL running on the target.
-    No HOST/TARGET split — the boundary line is gone.
-    This is the "I would have thought this impossible five years ago" slide.
+    S5.2 — Adapted from QNX Slide Library slide 41: four process steps.
+    Shows the practical path for host-first development across Linux and QNX.
     """
     lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "The Full System on Target")
+    set_ph(slide, 0, "Host / Target Support Matrix")
 
-    # ── geometry (identical to signal chain slide) ────────────────────
+    xs = [0.68, 3.83, 6.98, 10.13]
+    y, w, h = 2.20, 2.52, 4.30
+
+    host_w   = xs[1] + w - xs[0]
+    target_w = xs[3] + w - xs[2]
+    add_label(slide, xs[0], 1.82, host_w,   0.26, "HOSTS",   GRAY1, font_size=8, bold=True)
+    add_label(slide, xs[2], 1.82, target_w, 0.26, "TARGETS", GRAY1, font_size=8, bold=True)
+
+    boundary_x = (xs[1] + w + xs[2]) / 2
+    add_vline(slide, boundary_x, 1.78, 6.72, PURPLE, width_pt=1.25)
+
+    cards = [
+        (1, "Windows Host", "Windows 11",
+         ["CPU whisper.cpp works natively — stepping stone to NPU",
+          "HailoRT now builds natively — COM header workaround needed",
+          "Cross-compilation for arm64 requires WSL2",
+          "HailoRT PCIe driver unavailable under WSL2"], RED),
+        (2, "Ubuntu Host", "Native Linux or WSL2",
+         ["Uses apt multiarch packages",
+          "Cross-compiles for Ubuntu arm64",
+          "Links the HailoRT arm64 sysroot",
+          "Cross-compiles Hailo binary for RPi5"], RED),
+        (3, "Ubuntu Target", "Raspberry Pi 5",
+         ["Runs the Linux arm64 bridge",
+          "Hailo-10H over PCIe via Geekworm X1001 hat",
+          "CPU/NPU benchmarks matter most here",
+          "Same NPU on host and target is key"], RED),
+        (4, "QNX Target", "Raspberry Pi 5",
+         ["Runs SurgeXT on QNX",
+          "Uses the QNX cross SDK",
+          "Keeps the same host-first workflow"], RED),
+    ]
+
+    for x, card in zip(xs, cards):
+        _add_support_card(slide, x, y, w, h, *card)
+
+    for x in [3.24, 6.39, 9.55]:
+        add_arrow(slide, x, 3.33, 0.55, 0.28, GRAY1)
+
+    return slide
+
+
+def add_s26_signal_chain(prs):
+    """
+    S5.3 — Full system signal chain: HOST nodes left, TARGET nodes right,
+    separated by a purple boundary line.
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "How It All Fits Together")
+
     SLIDE_W = 13.33
     NW, NH  = 1.65, 0.82
     AW, AH  = 0.42, 0.22
@@ -1154,10 +1327,67 @@ def add_signal_chain_full_target_slide(prs):
     node_x  = [X0 + i * (NW + GAP)               for i in range(6)]
     arrow_x = [node_x[i] + NW + (GAP - AW) / 2   for i in range(5)]
 
-    # ── nodes — same colours as diagram 1 ────────────────────────────
+    spec = [
+        (["Voice",    "Input"],          GRAY3),
+        (["Whisper",  "Hailo NPU"],      RED),
+        (["Prog +",   "Bank Change"],    GRAY3),
+        (["MIDI > OSC", "Bridge"],       GRAY3),
+        (["SurgeXT",  "on QNX"],         RED2),
+        (["Audio",    "Output"],         GRAY3),
+    ]
+    for i, (lines, fill) in enumerate(spec):
+        add_node(slide, node_x[i], Y_NODE, NW, NH, lines, fill)
+
+    for x in arrow_x:
+        add_arrow(slide, x, Y_ARR, AW, AH, GRAY1)
+
+    x_boundary = node_x[2] + NW + GAP / 2
+    add_vline(slide, x_boundary, Y_NODE - 0.52, Y_NODE + NH + 0.52, PURPLE)
+
+    host_w = x_boundary - X0
+    tgt_w  = total_w - host_w
+    add_label(slide, X0,                  Y_NODE - 0.52, host_w, 0.30,
+              "HOST",                GRAY1, font_size=8, bold=True)
+    add_label(slide, x_boundary + 0.05,   Y_NODE - 0.52, tgt_w,  0.30,
+              "TARGET  (QNX / RPi5)", GRAY1, font_size=8, bold=True)
+
+    return slide
+
+
+def add_s27_cpu_npu_speedup_video(prs):
+    """S5.4 — Video: CPU vs NPU speed comparison."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "clip3_npu_speedup.mp4"),
+        title="CPU → NPU: The Speed Difference",
+    )
+
+
+def add_s28_signal_chain_full_target(prs):
+    """
+    S5.5 — Same six nodes as s23, but ALL running on the target.
+    No HOST/TARGET split — the boundary line is gone.
+    """
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "The Full System on Target")
+
+    SLIDE_W = 13.33
+    NW, NH  = 1.65, 0.82
+    AW, AH  = 0.42, 0.22
+    GAP     = 0.50
+    Y_NODE  = 3.05
+    Y_ARR   = Y_NODE + (NH - AH) / 2
+
+    total_w = 6 * NW + 5 * GAP
+    X0      = (SLIDE_W - total_w) / 2
+
+    node_x  = [X0 + i * (NW + GAP)               for i in range(6)]
+    arrow_x = [node_x[i] + NW + (GAP - AW) / 2   for i in range(5)]
+
     spec = [
         (["Voice",      "Input"],        GRAY3),
-        (["Whisper",    "Hailo NPU"],    RED),    # hero — NPU on-device
+        (["Whisper",    "Hailo NPU"],    RED),
         (["Prog +",     "Bank Change"],  GRAY3),
         (["MIDI > OSC", "Bridge"],       GRAY3),
         (["SurgeXT",    "on QNX"],       RED2),
@@ -1166,132 +1396,17 @@ def add_signal_chain_full_target_slide(prs):
     for i, (lines, fill) in enumerate(spec):
         add_node(slide, node_x[i], Y_NODE, NW, NH, lines, fill)
 
-    # ── arrows ────────────────────────────────────────────────────────
     for x in arrow_x:
         add_arrow(slide, x, Y_ARR, AW, AH, GRAY1)
 
-    # ── single TARGET label spanning all six nodes ────────────────────
     add_label(slide, X0, Y_NODE - 0.52, total_w, 0.30,
               "TARGET  (QNX / RPi5)", GRAY1, font_size=8, bold=True)
 
     return slide
 
 
-# ── Section 3 slides ─────────────────────────────────────────────────────────
-
-def add_hailo_hardware_slide(prs):
-    """S3.2 — 3x Hailo 10-H NPUs: same chip, three hardware contexts."""
-    lyt   = get_layout(prs, 1, "Three Contents")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "The Hailo 10-H — One Chip, Three Contexts")
-    set_content_ph(slide, 1,
-        "Windows 11 Dev Laptop",
-        [
-            "M.2 2280 slot",
-            "HailoRT SDK natively on Windows",
-            "Early Hailo API experimentation",
-            "Hailo backend disabled in this config",
-        ],
-    )
-    set_content_ph(slide, 2,
-        "Ubuntu Dev Laptop",
-        [
-            "M.2 2280 slot",
-            "Full HailoRT + arm64 cross-sysroot",
-            "Primary NPU pipeline dev host",
-            "Cross-compiles the Hailo binary for RPi5",
-        ],
-    )
-    set_content_ph(slide, 13,
-        "Raspberry Pi 5",
-        [
-            "M.2 2280 hat via PCIe",
-            "Hailo 10-H runs Whisper on-device",
-            "The deployment target",
-            "Same M.2 form factor across all three",
-        ],
-    )
-    return slide
-
-
-def add_npu_speed_result_slide(prs):
-    """S3.3 — The headline result: CPU vs Hailo 10-H on Whisper inference."""
-    lyt   = get_layout(prs, 1, "Two Contents")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "10× Faster on the NPU")
-    set_content_ph(slide, 1,
-        "Whisper on CPU — baseline",
-        [
-            "RPi5 ARM cores fully loaded during inference",
-            "Transcription latency: [measured — TODO]",
-            "SurgeXT audio competes for the same cores",
-            "Not practical for live performance",
-        ],
-    )
-    set_content_ph(slide, 2,
-        "Whisper on Hailo 10-H",
-        [
-            "Same model, same audio input",
-            "~10× faster than CPU baseline",
-            "CPU load during inference: near zero",
-            "SurgeXT runs undisturbed — real-time achieved",
-        ],
-    )
-    return slide
-
-
-# ── Section 4 slides ─────────────────────────────────────────────────────────
-
-def add_whispercpp_testbench_slide(prs):
-    """S4.1 — whisper.cpp testbench on the host CPU: validating the approach first."""
-    lyt   = get_layout(prs, 1, "One Content")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "The whisper.cpp Testbench")
-    set_content_ph(slide, 1,
-        "Validate the full Voice → MIDI chain on CPU before touching the NPU",
-        [
-            "whisper.cpp: portable C++ Whisper — no Python, no GPU",
-            "Develops and debugs entirely on Windows or Ubuntu laptop",
-            "CPU baseline timing recorded here — the 'before' in the 10× story",
-            "The NPU is never the variable until the logic is proven",
-        ],
-    )
-    return slide
-
-
-def add_voice_midi_chain_slide(prs):
-    """S4.2 — How voice commands map to MIDI Program + Bank Change messages."""
-    lyt   = get_layout(prs, 1, "Two Contents")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Voice → MIDI: The Chain")
-    set_content_ph(slide, 1,
-        "The signal path",
-        [
-            "Voice → whisper.cpp → transcribed text",
-            "Text matched against SurgeXT patch names",
-            "Match → MIDI Program Change + Bank Change",
-            "OSC bridge → SurgeXT loads the patch",
-        ],
-    )
-    set_content_ph(slide, 2,
-        "Why MIDI Program + Bank Change?",
-        [
-            "SurgeXT has no headless patch-selection API",
-            "Prog+Bank is the standard synth patch address space",
-            "Covers the entire SurgeXT factory catalogue",
-            "No SurgeXT source modifications required",
-        ],
-    )
-    return slide
-
-
-# ── Punchline (between Section 5 and Section 6) ───────────────────────────────
-
-def add_punchline_slide(prs):
-    """
-    The payoff moment — spoken BEFORE Video clip 4 plays.
-    Uses the Statement layout for full-slide impact.
-    """
+def add_s28_punchline(prs):
+    """The payoff moment — spoken BEFORE Video clip 4 plays."""
     lyt   = get_layout(prs, 1, "Statement")
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0,  "The Punchline")
@@ -1303,86 +1418,19 @@ def add_punchline_slide(prs):
     return slide
 
 
-# ── Section 6 slides ─────────────────────────────────────────────────────────
-
-def add_lessons_slide(prs):
-    """S6.1 — Three honest things that were harder than expected."""
-    lyt   = get_layout(prs, 1, "Three Contents")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Harder Than Expected")
-    set_content_ph(slide, 1,
-        "QNX Has No MIDI",
-        [
-            "MIDI has no role in automotive — QNX simply doesn't have it",
-            "SurgeMidiToOscBridge: a prerequisite, not a side quest",
-            "OSC over UDP: cleaner than raw MIDI in the end",
-            "The blocker is sometimes the thing you needed to build",
-        ],
+def add_s36_full_demo_video(prs):
+    """Post-punchline full demo video."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "clip4_full_demo.mp4"),
+        title="Live: Voice-Commanded Patch Selection",
     )
-    set_content_ph(slide, 2,
-        "Hailo vs the GPU World",
-        [
-            "GPU inference: years of tooling, run-anything-on-CUDA",
-            "Hailo: better than Qualcomm, steeper than GPU ecosystem",
-            "Model → HEF conversion: a step GPU workflows don't need",
-            "Worth it for constrained-hardware latency — budget the ramp",
-        ],
-    )
-    set_content_ph(slide, 13,
-        "Cross-Compilation Rabbit Holes",
-        [
-            "Ubuntu apt multiarch: [arch=amd64] qualifiers + "
-            "ports.ubuntu.com arm64 lines",
-            "DEB822 .sources format is cleaner — if you know it exists",
-            "QNX SDP: easier — cross-compile is the expected workflow",
-            "Invest a day in the dev environment, "
-            "not a week fighting the wrong variable",
-        ],
-    )
-    return slide
 
 
-def add_next_steps_slide(prs):
-    """S6.2 — Three directions this work opens up."""
-    lyt   = get_layout(prs, 1, "Three Contents")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "What This Opens Up")
-    set_content_ph(slide, 1,
-        "NeuralPlayer: What Happened Next",
-        [
-            "ADCx'23: Stem Separation + Audio-to-MIDI on the host",
-            "It didn't stop there",
-            "A future talk — the clue is the boundary line is gone",
-            "(TX/RX Part 3?)",
-        ],
-    )
-    set_content_ph(slide, 2,
-        "More NPU Workloads",
-        [
-            "Stem separation: real-time on the NPU, no cloud",
-            "AI audio enhancement: de-noise, de-reverb on-device",
-            "Multiple model pipelines on one Hailo chip",
-            "Edge audio AI — no cloud, no GPU, no Wi-Fi",
-        ],
-    )
-    set_content_ph(slide, 13,
-        "JUCE on QNX, Continued",
-        [
-            "Contributing the port upstream to JUCE",
-            "QNX Everywhere: the port widens its hardware reach",
-            "Tracktion Engine: full DAW-class pipelines on QNX",
-            "The embedded audio ecosystem is opening up",
-        ],
-    )
-    return slide
-
-
-# ── Dedication slide ──────────────────────────────────────────────────────────
-
-def add_dedication_slide(prs):
+def add_s02_dedication(prs):
     """
-    Post-punchline dedication to Jason Dasent — music producer and accessibility
-    consultant whose vision, sparked by ADC21, is what this project is reaching for.
+    Dedication to Jason Dasent — music producer and accessibility consultant
+    whose vision, sparked by ADC21, is what this project is reaching for.
     """
     lyt   = get_layout(prs, 1, "Statement")
     slide = prs.slides.add_slide(lyt)
@@ -1405,15 +1453,12 @@ def add_dedication_slide(prs):
     return slide
 
 
-# ── Contact slide ─────────────────────────────────────────────────────────────
-
-def add_contact_slide(prs):
-    """Final slide — Contact card layout (potx slide 14)."""
+def add_s36_contact(prs):
+    """Final slide — Contact card layout."""
     lyt   = get_layout(prs, 1, "Contact")
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0, "Thank you")
 
-    # ── Contact details (ph=10): name / title / details ───────────
     for ph in slide.placeholders:
         try:
             if ph.placeholder_format.idx != 10:
@@ -1455,10 +1500,6 @@ def add_contact_slide(prs):
 
         break
 
-    # ── Photo: fit-within-bounds, top-aligned, no cropping ────────
-    # insert_picture() zooms to fill width and crops the height, which cuts
-    # the top of a portrait photo off. Instead, scale to fit within the
-    # placeholder area and top-align so the head is always fully visible.
     photo_path = os.path.join(SLIDES_DIR, "KieranCoulter.jpg")
     if os.path.exists(photo_path):
         ph13 = None
@@ -1479,16 +1520,126 @@ def add_contact_slide(prs):
                 scale = min(ph_w / img_w_px, ph_h / img_h_px)
                 pic_w = int(img_w_px * scale)
                 pic_h = int(img_h_px * scale)
-                # Centre horizontally, align to top of placeholder area
                 pic_left = ph_left + (ph_w - pic_w) // 2
                 pic_top  = ph_top
                 slide.shapes.add_picture(photo_path, pic_left, pic_top, pic_w, pic_h)
             else:
-                ph13.insert_picture(photo_path)   # fallback
+                ph13.insert_picture(photo_path)
     else:
         print(f"Note: {photo_path} not found — photo placeholder left empty")
 
     return slide
+
+
+# ── Section 6 slides s29 – s35 ────────────────────────────────────────────────
+
+def add_s29_divider_s6(prs):
+    return add_divider(prs, 6, "From R&D to Production")
+
+
+def add_s30_databridge_demo(prs):
+    """S6.1 — DataBridge: MIDI-to-OSC data conversion in a production DAW context."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "DataBridge: MIDI Gap, Solved")
+    set_content_ph(slide, 1,
+        "What it demonstrates",
+        [
+            "MIDI has no role in automotive — data conversion is fundamental",
+            "DataBridge VST3 plugin loads in REAPER; no standalone app needed",
+            "MIDI CC data becomes SurgeXT OSC parameter updates in real time",
+            "Target host is a single text field — flip from dev to RPi5 instantly",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "The AVAS/ESE demo",
+        [
+            "CC 1 (mod wheel) → Speed / RPM → /param/a/osc/1/pitch",
+            "CC 11 (expression) → Throttle → /param/a/filter/1/cutoff",
+            "Notes C3–A3 → Gear 1–6 → /param/a/osc/1/octave",
+            "SurgeXT ESE_Normal patch responds live to every control move",
+        ],
+    )
+    return slide
+
+
+def add_s31_databridge_video(prs):
+    """S6.2 — DataBridge live demo video."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "clip_databridge_demo.mp4"),
+        title="DataBridge: Live AVAS/ESE Parameter Control",
+    )
+
+
+def add_s32_vrengine_demo(prs):
+    """S6.3 — VREngine: voice-controlled UserPrefsPane on target."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "VREngine: Voice Commands on Target")
+    set_content_ph(slide, 1,
+        "What it demonstrates",
+        [
+            "Always-on voice recognition at automotive latency budgets",
+            "Whisper on Hailo NPU: ~300 ms vs ~3 s on CPU",
+            "QNX Screen Framework: graphics and NPU on the same target",
+            "Keyword match routes speech directly to SurgeXT patch loads",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "The sound profile demo",
+        [
+            "Say “normal” → SurgeXT loads ESE_Normal patch",
+            "Say “sonic boom” → SurgeXT loads SonicBoom patch",
+            "Manual toggle buttons as fallback — same OSC path either way",
+            "Runs on host for dev; cross-compiles to RPi5/QNX unchanged",
+        ],
+    )
+    return slide
+
+
+def add_s33_vrengine_video(prs):
+    """S6.4 — VREngine live demo video."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "clip_vrengine_demo.mp4"),
+        title="VREngine: Voice-Switched Sound Profiles",
+    )
+
+
+def add_s34_genisys_demo(prs):
+    """S6.5 — GENISYS: both features unified in Jason Dasent's vision."""
+    lyt   = get_layout(prs, 1, "Two Contents")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "GENISYS: The Studio as a System")
+    set_content_ph(slide, 1,
+        "Jason Dasent's vision, now building",
+        [
+            "A Raspberry Pi that knows your entire studio",
+            "Any input (MIDI, voice, UI) routed to any destination",
+            "Studio Builder wizard defines your room once",
+            "DataBridge and VREngine become modalities — not separate tools",
+        ],
+    )
+    set_content_ph(slide, 2,
+        "The demo",
+        [
+            "Studio Builder: 2 MIDI controllers + SurgeXT + REAPER",
+            "MIDI CC automation and voice profile switching in one session",
+            "Front end on host, back end on target — TX/RX full circle",
+            "FOSS — the community is invited to build on this foundation",
+        ],
+    )
+    return slide
+
+
+def add_s35_genisys_video(prs):
+    """S6.6 — GENISYS live demo video."""
+    return add_video_slide(
+        prs,
+        video_path=os.path.join(SLIDES_DIR, "clip_genisys_demo.mp4"),
+        title="GENISYS: Studio Builder + AVAS/ESE + Voice Control",
+    )
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -1496,95 +1647,42 @@ def main():
     prs = open_template(TEMPLATE)
     strip_template_slides(prs)
 
-    # ── title + agenda ────────────────────────────────────────────
-    add_title_slide(prs)
-    add_agenda_slide(prs)
-
-    # ── Section 1: The Story So Far ──────────────────────────────
-    add_divider(prs, 1, "The Story So Far")
-
-    add_quadrant_slide(
-        prs,
-        title="Recap",
-        center_label="ADC'21",
-        quadrants=[
-            ("Audience",
-             "Beginner-friendly — no embedded or cross-compilation experience required"),
-            ("Hardware",
-             "Raspberry Pi 4 · Raspberry Pi OS · JUCE apps and plugins compiled on-device"),
-            ("The Trick",
-             "Mount the RPi filesystem over SSH — skip cross-compilation entirely"),
-            ("The Lesson",
-             "Get something running first. Optimise the dev workflow when you actually need to"),
-        ],
-    )
-
-    add_quadrant_slide(
-        prs,
-        title="Recap",
-        center_label="ADCx'23",
-        quadrants=[
-            ("The Project",
-             "NeuralPlayer — a host-side pipeline combining Stem Separation and Audio-to-MIDI conversion models"),
-            ("The Philosophy",
-             "Pure R&D belongs on the host: no target hardware, no cross-compilation, no embedded constraints"),
-            ("The Lesson",
-             "The further towards Research on the R&D spectrum, the more premature target work costs in friction"),
-            ("Coming in Future Talk",
-             "NeuralPlayer didn't stop here — a future talk will reveal where this project went next"),
-        ],
-    )
-
-    # ── Section 2: JUCE on QNX ───────────────────────────────────
-    add_divider(prs, 2, "JUCE on QNX")
-    add_qnx_everywhere_slide(prs)
-    add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
-    )
-    add_juce_porting_lessons_slide(prs)
-    add_screen_framework_slide(prs)
-    add_tracktion_engine_slide(prs)
-
-    # ── Section 3: Audio on the NPU ──────────────────────────────
-    add_divider(prs, 3, "Audio on the NPU")
-    add_npu_pros_cons_slide(prs)
-    add_hailo_hardware_slide(prs)
-    add_npu_speed_result_slide(prs)
-
-    # ── Section 4: Developing Host-First ─────────────────────────
-    add_divider(prs, 4, "Developing Host-First")
-    add_whispercpp_testbench_slide(prs)
-    add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip2_testbench_host.mp4"),
-        title="Testbench Running on Host CPU",
-    )
-    add_voice_midi_chain_slide(prs)
-
-    # ── Section 5: Getting to the Target ─────────────────────────
-    add_divider(prs, 5, "Getting to the Target")
-    add_midi_osc_bridge_slide(prs)
-    add_host_target_support_matrix_slide(prs)
-    add_signal_chain_slide(prs)
-    add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip3_npu_speedup.mp4"),
-        title="CPU → NPU: The Speed Difference",
-    )
-    add_signal_chain_full_target_slide(prs)
-
-    # ── Punchline (no section card — flows from Section 5) ────────
-    add_punchline_slide(prs)
-    add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip4_full_demo.mp4"),
-        title="Live: Voice-Commanded Patch Selection",
-    )
-
-    # ── Dedication + Contact ──────────────────────────────────────
-    add_dedication_slide(prs)
-    add_contact_slide(prs)
+    add_s01_title(prs)
+    add_s02_dedication(prs)
+    add_s03_agenda(prs)
+    add_s04_divider_s1(prs)
+    add_s05_recap_adc21(prs)
+    add_s06_recap_adcx23(prs)
+    add_s07_divider_s2(prs)
+    add_s08_qnx_everywhere(prs)
+    add_s09_it_works(prs)
+    add_s10_juce_porting_lessons(prs)
+    add_s11_screen_framework(prs)
+    add_s12_tracktion_engine(prs)
+    add_s13_divider_s3(prs)
+    add_s14_npu_pros_cons(prs)
+    add_s15_hailo_hardware(prs)
+    add_s16_qnx_hailo_status(prs)
+    add_s17_npu_speed_result(prs)
+    add_s18_divider_s4(prs)
+    add_s19_whispercpp_testbench(prs)
+    add_s20_testbench_video(prs)
+    add_s21_midi_osc_features(prs)
+    add_s22_voice_api_features(prs)
+    add_s23_divider_s5(prs)
+    add_s24_midi_osc_bridge(prs)
+    add_s25_host_target_support_matrix(prs)
+    add_s26_signal_chain(prs)
+    add_s27_cpu_npu_speedup_video(prs)
+    add_s28_signal_chain_full_target(prs)
+    add_s29_divider_s6(prs)
+    add_s30_databridge_demo(prs)
+    add_s31_databridge_video(prs)
+    add_s32_vrengine_demo(prs)
+    add_s33_vrengine_video(prs)
+    add_s34_genisys_demo(prs)
+    add_s35_genisys_video(prs)
+    add_s36_contact(prs)
 
     prs.save(OUTPUT)
     print(f"Saved {len(prs.slides)} slides: {OUTPUT}")
