@@ -87,7 +87,7 @@ $CXX "${SYSROOT_FLAGS[@]}" \
     "$BUILD_DIR/juce_osc.o" \
     "$BUILD_DIR/Main.o" \
     -lpthread -ldl -lrt -lasound \
-    -lX11 -lXext -lXinerama -lXcursor -lXrandr -lXcomposite -lXdamage \
+    -lX11 -lXext -lXinerama -lXcursor -lXrandr \
     -lGL -lfreetype -lfontconfig \
     -lz -lexpat \
     -o "$BUILD_DIR/VREngine"
