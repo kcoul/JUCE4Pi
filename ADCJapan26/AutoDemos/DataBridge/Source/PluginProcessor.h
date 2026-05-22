@@ -40,7 +40,8 @@ public:
     std::function<void()> onStateChanged;
 
 private:
-    void sendOsc (const juce::String& address, float value);
+    void sendOsc     (const juce::String& address, float value);
+    void sendOscNote (bool on, int note, int velocity);
 
     juce::OSCSender sender;
     bool            senderConnected = false;

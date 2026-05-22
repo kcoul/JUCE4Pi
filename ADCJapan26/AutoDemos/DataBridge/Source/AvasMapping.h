@@ -30,7 +30,7 @@ namespace AvasMapping
     {
         // CC, label, SurgeXT address, outMin, outMax
         { 1,  "Speed / RPM",  "/param/a/osc/1/pitch",      0.35f, 0.65f },
-        { 11, "Throttle",     "/param/a/filter/1/cutoff",  0.25f, 0.80f },
+        { 10, "Throttle",     "/param/a/filter/1/cutoff",  0.25f, 0.80f },
         { 7,  "Load / Amp",   "/param/a/amp/volume",       0.10f, 0.90f },
     };
     static constexpr int numCcMappings = 3;

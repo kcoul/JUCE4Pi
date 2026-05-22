@@ -19,6 +19,15 @@ void GenisysPluginProcessor::sendOsc (const juce::String& address, float value)
         sender.send (address, value);
 }
 
+void GenisysPluginProcessor::sendOscNote (bool on, int note, int velocity)
+{
+    ensureConnected();
+    if (! senderConnected)
+        return;
+
+    sender.send (juce::String ("/mnote"), (float) note, on ? (float) velocity : 0.0f);
+}
+
 void GenisysPluginProcessor::processBlock (juce::AudioBuffer<float>& audio,
                                            juce::MidiBuffer& midi)
 {
@@ -54,7 +63,8 @@ void GenisysPluginProcessor::processBlock (juce::AudioBuffer<float>& audio,
                 if (AvasMapping::gears[i].midiNote == note)
                 {
                     currentGear = AvasMapping::gears[i].gearNumber;
-                    sendOsc (AvasMapping::gearOscAddress, AvasMapping::gears[i].oscOctaveNorm);
+                    sendOsc     (AvasMapping::gearOscAddress, AvasMapping::gears[i].oscOctaveNorm);
+                    sendOscNote (true, note, msg.getVelocity());
                     stateChanged = true;
                     break;
                 }
@@ -62,7 +72,15 @@ void GenisysPluginProcessor::processBlock (juce::AudioBuffer<float>& audio,
         }
         else if (msg.isNoteOff())
         {
-            // Sustain the gear state on note-off; gear holds until next gear note.
+            int note = msg.getNoteNumber();
+            for (int i = 0; i < AvasMapping::numGears; ++i)
+            {
+                if (AvasMapping::gears[i].midiNote == note)
+                {
+                    sendOscNote (false, note, 0);
+                    break;
+                }
+            }
         }
     }
 

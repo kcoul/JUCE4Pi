@@ -1,5 +1,6 @@
 juce_add_plugin(DataBridge
     PRODUCT_NAME        "DataBridge"
+    COMPANY_NAME        "QNX"
     VERSION             "0.1"
     PLUGIN_MANUFACTURER_CODE Gnsy
     PLUGIN_CODE         GmOp
