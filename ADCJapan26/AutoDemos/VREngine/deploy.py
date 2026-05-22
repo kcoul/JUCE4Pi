@@ -35,9 +35,14 @@ def main():
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(host, username=user or None, password=password)
 
-    remote_path = args.deploy_path.rstrip('/') + '/VREngine'
+    deploy_dir = args.deploy_path
+    if deploy_dir == '~':
+        _, stdout, _ = client.exec_command('echo $HOME')
+        deploy_dir = stdout.read().decode().strip()
 
-    client.exec_command(f'mkdir -p "{args.deploy_path}"')
+    remote_path = deploy_dir.rstrip('/') + '/VREngine'
+
+    client.exec_command(f'mkdir -p "{deploy_dir}"')
 
     sftp = client.open_sftp()
     sftp.put(_BINARY, remote_path)
