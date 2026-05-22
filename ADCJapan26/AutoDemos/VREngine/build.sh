@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 # Cross-compile VREngine for aarch64 Ubuntu Linux (RPi 5) from x86_64 Linux / WSL2.
-# Optionally deploys the binary to the target via SCP.
 #
 # Prerequisites (WSL2/Ubuntu host):
-#   sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+#   sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libfreetype6-dev
 #
 # Usage:
-#   ./build_and_deploy.sh                          # build only
-#   ./build_and_deploy.sh user@192.168.1.100       # build + deploy to /tmp
-#   ./build_and_deploy.sh user@192.168.1.100 /opt  # build + deploy to custom path
+#   ./build.sh
 #
 # If your cross-compiler needs a sysroot (for finding target X11/ALSA headers),
 # set SYSROOT before calling: export SYSROOT=/path/to/rpi5-sysroot
@@ -17,8 +14,6 @@ set -euo pipefail
 
 CXX="${CXX:-aarch64-linux-gnu-g++}"
 CC="${CC:-aarch64-linux-gnu-gcc}"
-DEPLOY_HOST="${1:-}"
-DEPLOY_PATH="${2:-/tmp}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 JUCE_ROOT="$SCRIPT_DIR/../../surge/libs/JUCE"
@@ -93,10 +88,3 @@ $CXX "${SYSROOT_FLAGS[@]}" \
     -o "$BUILD_DIR/VREngine"
 
 echo "Built: $BUILD_DIR/VREngine"
-
-if [[ -n "$DEPLOY_HOST" ]]; then
-    echo "Deploying to $DEPLOY_HOST:$DEPLOY_PATH ..."
-    ssh "$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
-    scp "$BUILD_DIR/VREngine" "$DEPLOY_HOST:$DEPLOY_PATH/VREngine"
-    echo "Deployed. Run with: ssh $DEPLOY_HOST '$DEPLOY_PATH/VREngine'"
-fi
