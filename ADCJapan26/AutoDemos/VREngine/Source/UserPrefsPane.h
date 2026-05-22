@@ -64,8 +64,8 @@ public:
 private:
     const std::vector<SoundProfile> profiles =
     {
-        { "Modern",  "QNX/Pads/Modern",  "modern" },
-        { "ICE",     "QNX/Pads/ICE",     "ice"    },
+        { "Modern",  "/QNX/Pads/Modern",  "modern" },
+        { "ICE",     "/QNX/Pads/ICE",     "ice"    },
     };
 
     juce::OSCSender sender;
@@ -91,8 +91,8 @@ private:
         for (int i = 0; i < (int) profileButtons.size(); ++i)
             profileButtons[i]->setToggleState (i == activeIndex, juce::dontSendNotification);
 
-        sendPatchLoad (profiles[idx].patchName);
         lastCommandLabel.setText ("Active: " + profiles[idx].name, juce::dontSendNotification);
+        sendPatchLoad (profiles[idx].patchName);
     }
 
     void sendPatchLoad (const juce::String& patchName)
