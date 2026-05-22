@@ -27,6 +27,8 @@ public:
 
         for (auto& p : profiles)
             addProfile (p);
+
+        sender.connect (surgeHost, surgePort);
     }
 
     void resized() override
@@ -63,6 +65,7 @@ private:
         { "ICE",     "QNX/Pads/ICE",     "ice"    },
     };
 
+    juce::OSCSender sender;
     juce::Label titleLabel;
     juce::Label lastCommandLabel;
     std::vector<std::unique_ptr<juce::TextButton>> profileButtons;
@@ -91,9 +94,7 @@ private:
 
     void sendPatchLoad (const juce::String& patchName)
     {
-        juce::OSCSender sender;
-        if (sender.connect (surgeHost, surgePort))
-            sender.send ("/patch/load_user", patchName);
+        sender.send ("/patch/load_user", patchName);
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UserPrefsPane)
