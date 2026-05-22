@@ -17,7 +17,7 @@ class UserPrefsPane  : public juce::Component
 public:
     UserPrefsPane()
     {
-        titleLabel.setText ("Sound Profile", juce::dontSendNotification);
+        titleLabel.setText ("Engine Sound", juce::dontSendNotification);
         titleLabel.setFont (juce::FontOptions (18.0f, juce::Font::bold));
         addAndMakeVisible (titleLabel);
 
@@ -59,8 +59,8 @@ public:
 private:
     const std::vector<SoundProfile> profiles =
     {
-        { "ESE Normal",   "GENISYS/ESE_Normal",   "normal"  },
-        { "Sonic Boom",   "GENISYS/SonicBoom",    "sonic"   },
+        { "Modern",  "QNX/Pads/Modern",  "modern" },
+        { "ICE",     "QNX/Pads/ICE",     "ice"    },
     };
 
     juce::Label titleLabel;
