@@ -44,6 +44,7 @@ COMMON=(
     "-I$JUCE_ROOT"
     "-I$JUCE_ROOT/modules"
     "-I$SRC_DIR"
+    -I/usr/include/freetype2
 )
 
 echo "Compiling JUCE modules..."
