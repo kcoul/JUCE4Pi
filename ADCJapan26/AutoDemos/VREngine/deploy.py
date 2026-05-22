@@ -21,8 +21,8 @@ def main():
     parser = argparse.ArgumentParser(description="Deploy VREngine to RPi5 target")
     parser.add_argument("--target-ip", required=True,
                         help="Target as user@host or host")
-    parser.add_argument("--deploy-path", default="/tmp",
-                        help='Destination directory on target (default: /tmp)')
+    parser.add_argument("--deploy-path", default="~",
+                        help='Destination directory on target (default: ~/)')
     args = parser.parse_args()
 
     if not os.path.exists(_BINARY):
@@ -46,7 +46,7 @@ def main():
     client.close()
 
     print(f"Deployed to {args.target_ip}:{remote_path}")
-    print(f"Run with: ssh {args.target_ip} '{remote_path}'")
+    print(f"Run it from a terminal on the target: {remote_path}")
 
 if __name__ == "__main__":
     main()
