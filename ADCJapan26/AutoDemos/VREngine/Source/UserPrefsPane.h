@@ -28,7 +28,10 @@ public:
         for (auto& p : profiles)
             addProfile (p);
 
-        sender.connect (surgeHost, surgePort);
+        bool connected = sender.connect (surgeHost, surgePort);
+        lastCommandLabel.setText (connected ? "OSC ready (" + surgeHost + ":" + juce::String (surgePort) + ")"
+                                            : "OSC connect FAILED",
+                                  juce::dontSendNotification);
     }
 
     void resized() override
@@ -94,7 +97,9 @@ private:
 
     void sendPatchLoad (const juce::String& patchName)
     {
-        sender.send ("/patch/load_user", patchName);
+        bool ok = sender.send ("/patch/load_user", patchName);
+        lastCommandLabel.setText (ok ? "Sent: " + patchName : "Send FAILED: " + patchName,
+                                  juce::dontSendNotification);
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UserPrefsPane)
