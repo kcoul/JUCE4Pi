@@ -50,3 +50,4 @@ ADCJapan26/Slides/*.pptx
 ADCJapan26/Slides/placeholder.mp4
 
 .claude/settings.local.json
+surge/libs/whisper.cpp/models/ggml-silero-v6.2.0.bin
