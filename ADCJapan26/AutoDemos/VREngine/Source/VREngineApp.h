@@ -2,13 +2,8 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "UserPrefsPane.h"
 
-// ---------------------------------------------------------------------------
-// Whisper/NPU voice input — compiled in only when VRENGINE_HAS_HAILO=1.
-// When the flag is off the UI still works; voice input is via a typed field.
-// ---------------------------------------------------------------------------
 #if VRENGINE_HAS_HAILO
-// Forward-declared; real implementation in VoiceInput_Hailo.cpp
-class VoiceInputThread;
+#include "VoiceInput_Hailo.h"
 #endif
 
 class MainWindow  : public juce::DocumentWindow
@@ -23,7 +18,7 @@ public:
         setUsingNativeTitleBar (true);
         setContentOwned (new MainComponent(), true);
         setResizable (true, true);
-        centreWithSize (400, 320);
+        centreWithSize (400, 300);
         setVisible (true);
     }
 
@@ -34,35 +29,26 @@ public:
     {
         UserPrefsPane prefsPane;
 
-        // Typed input — always available; on Hailo builds also wired from VoiceInputThread
-        juce::TextEditor  voiceSimInput;
-        juce::TextButton  submitBtn { "Send" };
-        juce::Label       inputLabel { {}, "Voice (typed):" };
+#if VRENGINE_HAS_HAILO
+        std::unique_ptr<VoiceInputThread> voiceThread;
+#endif
 
         MainComponent()
         {
             addAndMakeVisible (prefsPane);
-            addAndMakeVisible (inputLabel);
-            addAndMakeVisible (voiceSimInput);
-            addAndMakeVisible (submitBtn);
+            setSize (400, 300);
 
-            submitBtn.onClick = [this]
-            {
-                prefsPane.handleVoiceInput (voiceSimInput.getText());
-                voiceSimInput.clear();
-            };
-
-            setSize (400, 320);
+#if VRENGINE_HAS_HAILO
+            voiceThread = std::make_unique<VoiceInputThread>();
+            voiceThread->start ([this] (const juce::String& text) {
+                prefsPane.handleVoiceInput (text);
+            });
+#endif
         }
 
         void resized() override
         {
-            auto area = getLocalBounds().reduced (8);
-            auto inputRow = area.removeFromBottom (36).reduced (0, 4);
-            submitBtn.setBounds    (inputRow.removeFromRight (70));
-            inputLabel.setBounds   (inputRow.removeFromLeft  (100));
-            voiceSimInput.setBounds (inputRow);
-            prefsPane.setBounds    (area);
+            prefsPane.setBounds (getLocalBounds().reduced (8));
         }
     };
 };

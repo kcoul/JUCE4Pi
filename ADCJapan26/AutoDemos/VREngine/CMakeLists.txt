@@ -28,10 +28,92 @@ target_link_libraries(VREngine
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
-# When Hailo is enabled, add VoiceInput_Hailo.cpp and link HailoRT.
-# This mirrors the BRIDGE_HAS_HAILO pattern in SurgeMidiToOscBridge.
+# When Hailo is enabled, add the NPU voice pipeline and its dependencies.
 if(VRENGINE_HAS_HAILO)
     target_sources(VREngine PRIVATE Source/VoiceInput_Hailo.cpp)
+
     find_package(HailoRT REQUIRED)
-    target_link_libraries(VREngine PRIVATE HailoRT::libhailort)
+
+    # whisper.cpp is needed for the silero VAD (not for CPU inference).
+    if(NOT TARGET whisper)
+        set(BUILD_SHARED_LIBS       OFF CACHE BOOL "" FORCE)
+        set(WHISPER_BUILD_TESTS     OFF CACHE BOOL "" FORCE)
+        set(WHISPER_BUILD_EXAMPLES  OFF CACHE BOOL "" FORCE)
+        set(WHISPER_BUILD_SERVER    OFF CACHE BOOL "" FORCE)
+        set(GGML_BACKEND_DL        OFF CACHE BOOL "" FORCE)
+        add_subdirectory(
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp
+            ${CMAKE_CURRENT_BINARY_DIR}/whisper.cpp
+            EXCLUDE_FROM_ALL)
+    endif()
+
+    target_link_libraries(VREngine PRIVATE
+        HailoRT::libhailort
+        whisper
+        juce::juce_audio_devices)
+
+    # Embed the silero VAD model into the binary so the app is self-contained.
+    set(_vad_model    "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp/models/ggml-silero-v6.2.0.bin")
+    set(_embed_script "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/extras/SurgeMidiToOscBridge/tools/embed_binary_as_c.cmake")
+    set(_gen_dir      "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+    # Download the VAD model at configure time if it is not already present.
+    if(NOT EXISTS "${_vad_model}")
+        message(STATUS "VREngine: downloading silero VAD model...")
+        file(DOWNLOAD
+            "https://huggingface.co/ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin"
+            "${_vad_model}"
+            INACTIVITY_TIMEOUT 30
+            TIMEOUT 300
+            STATUS _dl_status)
+        list(GET _dl_status 0 _dl_code)
+        if(_dl_code EQUAL 0)
+            message(STATUS "VREngine: silero VAD model downloaded")
+        else()
+            list(GET _dl_status 1 _dl_msg)
+            message(WARNING "VREngine: failed to download silero VAD model: ${_dl_msg}")
+            file(REMOVE "${_vad_model}")
+        endif()
+    endif()
+
+    if(EXISTS "${_vad_model}" AND EXISTS "${_embed_script}")
+        file(MAKE_DIRECTORY "${_gen_dir}")
+        add_custom_command(
+            OUTPUT  "${_gen_dir}/embedded_vad_model.h"
+                    "${_gen_dir}/embedded_vad_model.cpp"
+            COMMAND "${CMAKE_COMMAND}"
+                    -DINPUT=${_vad_model}
+                    -DOUTPUT_H=${_gen_dir}/embedded_vad_model.h
+                    -DOUTPUT_CPP=${_gen_dir}/embedded_vad_model.cpp
+                    -DSYMBOL=ggml_silero_vad_model
+                    -P "${_embed_script}"
+            DEPENDS "${_vad_model}" "${_embed_script}"
+            COMMENT "Embedding silero VAD model into VREngine")
+        target_sources(VREngine PRIVATE "${_gen_dir}/embedded_vad_model.cpp")
+        target_include_directories(VREngine PRIVATE "${_gen_dir}")
+        target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_VAD=1)
+    else()
+        target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_VAD=0)
+        message(STATUS "VREngine: VAD model not found; it must be present at runtime in models/")
+    endif()
+
+    # Windows: avoid min/max macro conflicts from COM headers pulled in by HailoRT.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        target_compile_definitions(VREngine PRIVATE NOMINMAX=1)
+    endif()
+
+    # Copy Hailo HEF models next to the binary at build time.
+    set(_hailo_models_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/extras/SurgeMidiToOscBridge/Resources/models/hailo10h")
+    foreach(_hef_name Tiny Base Small)
+        set(_hef_src "${_hailo_models_dir}/Whisper-${_hef_name}.hef")
+        if(EXISTS "${_hef_src}")
+            add_custom_command(TARGET VREngine POST_BUILD
+                COMMAND "${CMAKE_COMMAND}" -E make_directory
+                        "$<TARGET_FILE_DIR:VREngine>/models/hailo10h"
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "${_hef_src}"
+                        "$<TARGET_FILE_DIR:VREngine>/models/hailo10h/Whisper-${_hef_name}.hef"
+                COMMENT "Copying Whisper-${_hef_name}.hef next to VREngine binary")
+        endif()
+    endforeach()
 endif()
