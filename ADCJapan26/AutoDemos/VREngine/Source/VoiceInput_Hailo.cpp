@@ -17,6 +17,15 @@
 #endif
 
 #include "SileroVad.h"
+
+#ifndef VRENGINE_HAS_EMBEDDED_SILERO_VAD
+#define VRENGINE_HAS_EMBEDDED_SILERO_VAD 0
+#endif
+
+#if VRENGINE_HAS_EMBEDDED_SILERO_VAD
+#include "embedded_silero_vad.h"
+#endif
+
 #include "VoiceInput_Hailo.h"
 
 #include <algorithm>
@@ -195,10 +204,18 @@ void VoiceInputThread::audioDeviceIOCallbackWithContext (const float* const* inp
 void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefPath)
 {
     // ── Silero VAD init ───────────────────────────────────────────────────────
-    const auto vadModelFile = juce::File::getSpecialLocation (juce::File::currentExecutableFile)
-                                  .getParentDirectory().getChildFile ("silero_vad.onnx");
     std::unique_ptr<SileroVad> vad;
-    try { vad = std::make_unique<SileroVad> (vadModelFile.getFullPathName().toStdString()); }
+    try
+    {
+#if VRENGINE_HAS_EMBEDDED_SILERO_VAD
+        vad = std::make_unique<SileroVad> (gSileroVadOnnxData,
+                                            static_cast<size_t> (gSileroVadOnnxSize));
+#else
+        const auto vadModelFile = juce::File::getSpecialLocation (juce::File::currentExecutableFile)
+                                      .getParentDirectory().getChildFile ("silero_vad.onnx");
+        vad = std::make_unique<SileroVad> (vadModelFile.getFullPathName().toStdString());
+#endif
+    }
     catch (const std::exception& e)
     {
         juce::MessageManager::callAsync ([this, msg = juce::String (e.what())] {

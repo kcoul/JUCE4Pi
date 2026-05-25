@@ -34,30 +34,18 @@ if(VRENGINE_HAS_HAILO)
 
     find_package(HailoRT REQUIRED)
 
-    # Find ONNX Runtime (honours ONNXRUNTIME_DIR cache variable for manual installs).
-    if(NOT TARGET onnxruntime::onnxruntime)
-        find_path(ONNXRUNTIME_INCLUDE_DIR
-            NAMES onnxruntime_cxx_api.h
-            HINTS "${ONNXRUNTIME_DIR}/include"
-            PATH_SUFFIXES onnxruntime/core/session
-            REQUIRED)
-        find_library(ONNXRUNTIME_LIBRARY
-            NAMES onnxruntime
-            HINTS "${ONNXRUNTIME_DIR}/lib"
-            REQUIRED)
-        add_library(onnxruntime::onnxruntime UNKNOWN IMPORTED)
-        set_target_properties(onnxruntime::onnxruntime PROPERTIES
-            IMPORTED_LOCATION "${ONNXRUNTIME_LIBRARY}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ONNXRUNTIME_INCLUDE_DIR}")
-    endif()
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FetchOnnxRuntime.cmake")
 
     target_link_libraries(VREngine PRIVATE
         HailoRT::libhailort
         onnxruntime::onnxruntime
         juce::juce_audio_devices)
 
-    # Download Silero VAD ONNX model if not already present.
-    set(_silero_model "${CMAKE_CURRENT_SOURCE_DIR}/Resources/silero_vad.onnx")
+    # Download Silero VAD ONNX model and embed it via incbin.
+    set(_silero_model  "${CMAKE_CURRENT_SOURCE_DIR}/Resources/silero_vad.onnx")
+    set(_incbin_dir    "${CMAKE_CURRENT_SOURCE_DIR}/../libs/incbin")
+    set(_gen_dir       "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
     if(NOT EXISTS "${_silero_model}")
         message(STATUS "VREngine: downloading Silero VAD model...")
         file(DOWNLOAD
@@ -72,14 +60,18 @@ if(VRENGINE_HAS_HAILO)
             file(REMOVE "${_silero_model}")
         endif()
     endif()
+
     if(EXISTS "${_silero_model}")
-        add_custom_command(TARGET VREngine POST_BUILD
-            COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                    "${_silero_model}"
-                    "$<TARGET_FILE_DIR:VREngine>/silero_vad.onnx"
-            COMMENT "Copying silero_vad.onnx next to VREngine binary")
+        file(MAKE_DIRECTORY "${_gen_dir}")
+        set(SILERO_ONNX_PATH "${_silero_model}")
+        configure_file("${_incbin_dir}/silero_onnx_embed.c.in"
+                       "${_gen_dir}/silero_onnx_embed.c" @ONLY)
+        target_sources(VREngine PRIVATE "${_gen_dir}/silero_onnx_embed.c")
+        target_include_directories(VREngine PRIVATE "${_incbin_dir}")
+        target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_SILERO_VAD=1)
     else()
-        message(WARNING "VREngine: silero_vad.onnx not found; VAD will fail at runtime")
+        target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_SILERO_VAD=0)
+        message(WARNING "VREngine: silero_vad.onnx not found; will search next to binary at runtime")
     endif()
 
     # Windows: avoid min/max macro conflicts from COM headers pulled in by HailoRT.

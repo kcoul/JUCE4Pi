@@ -20,6 +20,14 @@ public:
         c_.assign (2 * 64, 0.0f);
     }
 
+    SileroVad (const void* modelData, size_t modelBytes)
+        : env_     (ORT_LOGGING_LEVEL_WARNING, "SileroVad"),
+          session_ (env_, modelData, modelBytes, Ort::SessionOptions{})
+    {
+        h_.assign (2 * 64, 0.0f);
+        c_.assign (2 * 64, 0.0f);
+    }
+
     // Returns speech probability. samples must point to exactly kWindowSamples floats.
     float predict (const float* samples)
     {
