@@ -36,6 +36,11 @@ if(VRENGINE_HAS_HAILO)
 
     include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FetchOnnxRuntime.cmake")
 
+    # libonnxruntime.so ships next to the binary; tell the dynamic linker to look there.
+    set_target_properties(VREngine PROPERTIES
+        BUILD_RPATH  "$ORIGIN"
+        INSTALL_RPATH "$ORIGIN")
+
     target_link_libraries(VREngine PRIVATE
         HailoRT::libhailort
         onnxruntime::onnxruntime

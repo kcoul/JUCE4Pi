@@ -12,6 +12,7 @@ After deploy, on the Pi:
     ~/vrengine/VREngine [--model tiny|base|small]
 """
 
+import glob
 import os
 import getpass
 import argparse
@@ -56,6 +57,13 @@ def main():
     print(f"  → VREngine")
     sftp.put(binary, remote_bin)
     sftp.chmod(remote_bin, 0o755)
+
+    # Deploy ONNX Runtime shared libs (libonnxruntime.so* alongside the binary).
+    for so_file in sorted(glob.glob(os.path.join(_DIST, "libonnxruntime*.so*"))):
+        fname = os.path.basename(so_file)
+        remote = deploy_dir.rstrip('/') + '/' + fname
+        print(f"  → {fname}")
+        sftp.put(so_file, remote)
 
     # Deploy models directory (Hailo HEFs) preserving the dist/ layout.
     models_src = os.path.join(_DIST, "models")

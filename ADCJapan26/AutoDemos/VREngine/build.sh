@@ -68,6 +68,15 @@ else
     echo "  WARNING: VREngine binary not found in $CROSS_BUILD"
 fi
 
+# Collect ONNX Runtime shared libs (needed at runtime alongside VREngine).
+ORT_LIB_DIR="$(find "$CROSS_BUILD/_deps/onnxruntime_fetch-src" -name "libonnxruntime.so*" -type f 2>/dev/null | head -1 | xargs -r dirname)"
+if [[ -n "$ORT_LIB_DIR" ]]; then
+    while IFS= read -r f; do
+        cp -L "$f" "$DIST_DIR/$(basename "$f")"
+        echo "  → dist/$(basename "$f")"
+    done < <(find "$ORT_LIB_DIR" -name "libonnxruntime*.so*" \( -type f -o -type l \) 2>/dev/null)
+fi
+
 HEF_SRC="$(find "$CROSS_BUILD" -type d -name "hailo10h" ! -path "*/_deps/*" 2>/dev/null | head -1)"
 if [[ -n "$HEF_SRC" && -d "$HEF_SRC" ]]; then
     mkdir -p "$DIST_DIR/models/hailo10h"
