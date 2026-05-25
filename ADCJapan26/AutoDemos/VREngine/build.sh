@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cross-compile VREngine for aarch64 Ubuntu/RPi OS (RPi5) from WSL2.
 #
-# Prerequisites (WSL2/Ubuntu host) — same as GENISYS:
+# Prerequisites (WSL2/Ubuntu host):
 #   sudo apt install cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 #   sudo dpkg --add-architecture arm64
 #   sudo apt update
@@ -23,7 +23,7 @@ BUILD_DIR="$SCRIPT_DIR/build"
 NATIVE_BUILD="$BUILD_DIR/native"
 CROSS_BUILD="$BUILD_DIR/aarch64-linux"
 DIST_DIR="$BUILD_DIR/dist"
-TOOLCHAIN="$SCRIPT_DIR/../../GENISYS/cmake/toolchain-aarch64-linux.cmake"
+TOOLCHAIN="$AUTODEMOS_DIR/cmake/toolchain-aarch64-linux.cmake"
 
 HAILO=ON
 if [[ "${1:-}" == "--no-hailo" ]]; then

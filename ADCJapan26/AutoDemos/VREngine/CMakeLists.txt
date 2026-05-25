@@ -42,7 +42,7 @@ if(VRENGINE_HAS_HAILO)
         set(WHISPER_BUILD_SERVER    OFF CACHE BOOL "" FORCE)
         set(GGML_BACKEND_DL        OFF CACHE BOOL "" FORCE)
         add_subdirectory(
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/../libs/whisper.cpp
             ${CMAKE_CURRENT_BINARY_DIR}/whisper.cpp
             EXCLUDE_FROM_ALL)
     endif()
@@ -53,8 +53,8 @@ if(VRENGINE_HAS_HAILO)
         juce::juce_audio_devices)
 
     # Embed the silero VAD model via incbin (assembler .incbin — near-instant compile).
-    set(_vad_model  "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp/models/ggml-silero-v6.2.0.bin")
-    set(_incbin_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/incbin")
+    set(_vad_model  "${CMAKE_CURRENT_SOURCE_DIR}/../libs/whisper.cpp/models/ggml-silero-v6.2.0.bin")
+    set(_incbin_dir "${CMAKE_CURRENT_SOURCE_DIR}/../libs/incbin")
     set(_gen_dir    "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
     if(NOT EXISTS "${_vad_model}")
@@ -94,7 +94,7 @@ if(VRENGINE_HAS_HAILO)
     endif()
 
     # Copy Hailo HEF models next to the binary at build time.
-    set(_hailo_models_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/extras/SurgeMidiToOscBridge/Resources/models/hailo10h")
+    set(_hailo_models_dir "${CMAKE_CURRENT_SOURCE_DIR}/Resources/models/hailo10h")
     foreach(_hef_name Tiny Base Small)
         set(_hef_src "${_hailo_models_dir}/Whisper-${_hef_name}.hef")
         if(EXISTS "${_hef_src}")
