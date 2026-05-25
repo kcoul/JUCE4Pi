@@ -9,14 +9,14 @@
 class MainWindow  : public juce::DocumentWindow
 {
 public:
-    explicit MainWindow (const juce::String& name)
+    MainWindow (const juce::String& name, const juce::String& modelName)
         : DocumentWindow (name,
                           juce::Desktop::getInstance().getDefaultLookAndFeel()
                               .findColour (juce::ResizableWindow::backgroundColourId),
                           DocumentWindow::allButtons)
     {
         setUsingNativeTitleBar (true);
-        setContentOwned (new MainComponent(), true);
+        setContentOwned (new MainComponent (modelName), true);
         setResizable (true, true);
         centreWithSize (400, 300);
         setVisible (true);
@@ -33,7 +33,7 @@ public:
         std::unique_ptr<VoiceInputThread> voiceThread;
 #endif
 
-        MainComponent()
+        explicit MainComponent (const juce::String& modelName)
         {
             addAndMakeVisible (prefsPane);
             setSize (400, 300);
@@ -42,7 +42,9 @@ public:
             voiceThread = std::make_unique<VoiceInputThread>();
             voiceThread->start ([this] (const juce::String& text) {
                 prefsPane.handleVoiceInput (text);
-            });
+            }, modelName);
+#else
+            juce::ignoreUnused (modelName);
 #endif
         }
 
@@ -59,13 +61,25 @@ public:
     const juce::String getApplicationName() override    { return "VREngine"; }
     const juce::String getApplicationVersion() override { return "0.1"; }
 
-    void initialise (const juce::String&) override
+    void initialise (const juce::String& commandLine) override
     {
-        mainWindow = std::make_unique<MainWindow> (getApplicationName());
+        juce::ArgumentList args (getApplicationName(), commandLine);
+        juce::String modelName = "Tiny";
+        if (args.containsOption ("--model"))
+            modelName = normaliseModelName (args.getValueForOption ("--model"));
+        mainWindow = std::make_unique<MainWindow> (getApplicationName(), modelName);
     }
 
     void shutdown() override { mainWindow.reset(); }
 
 private:
+    static juce::String normaliseModelName (const juce::String& s)
+    {
+        const auto lower = s.toLowerCase().trim();
+        if (lower == "base"  || lower == "b") return "Base";
+        if (lower == "small" || lower == "s") return "Small";
+        return "Tiny";
+    }
+
     std::unique_ptr<MainWindow> mainWindow;
 };

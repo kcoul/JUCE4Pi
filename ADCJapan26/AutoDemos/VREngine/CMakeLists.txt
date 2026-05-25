@@ -52,12 +52,11 @@ if(VRENGINE_HAS_HAILO)
         whisper
         juce::juce_audio_devices)
 
-    # Embed the silero VAD model into the binary so the app is self-contained.
-    set(_vad_model    "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp/models/ggml-silero-v6.2.0.bin")
-    set(_embed_script "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/extras/SurgeMidiToOscBridge/tools/embed_binary_as_c.cmake")
-    set(_gen_dir      "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    # Embed the silero VAD model via incbin (assembler .incbin — near-instant compile).
+    set(_vad_model  "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/whisper.cpp/models/ggml-silero-v6.2.0.bin")
+    set(_incbin_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../surge/libs/incbin")
+    set(_gen_dir    "${CMAKE_CURRENT_BINARY_DIR}/generated")
 
-    # Download the VAD model at configure time if it is not already present.
     if(NOT EXISTS "${_vad_model}")
         message(STATUS "VREngine: downloading silero VAD model...")
         file(DOWNLOAD
@@ -76,21 +75,13 @@ if(VRENGINE_HAS_HAILO)
         endif()
     endif()
 
-    if(EXISTS "${_vad_model}" AND EXISTS "${_embed_script}")
+    if(EXISTS "${_vad_model}")
         file(MAKE_DIRECTORY "${_gen_dir}")
-        add_custom_command(
-            OUTPUT  "${_gen_dir}/embedded_vad_model.h"
-                    "${_gen_dir}/embedded_vad_model.cpp"
-            COMMAND "${CMAKE_COMMAND}"
-                    -DINPUT=${_vad_model}
-                    -DOUTPUT_H=${_gen_dir}/embedded_vad_model.h
-                    -DOUTPUT_CPP=${_gen_dir}/embedded_vad_model.cpp
-                    -DSYMBOL=ggml_silero_vad_model
-                    -P "${_embed_script}"
-            DEPENDS "${_vad_model}" "${_embed_script}"
-            COMMENT "Embedding silero VAD model into VREngine")
-        target_sources(VREngine PRIVATE "${_gen_dir}/embedded_vad_model.cpp")
-        target_include_directories(VREngine PRIVATE "${_gen_dir}")
+        set(VAD_MODEL_PATH "${_vad_model}")
+        configure_file("${_incbin_dir}/vad_model_embed.c.in"
+                       "${_gen_dir}/vad_model_embed.c" @ONLY)
+        target_sources(VREngine PRIVATE "${_gen_dir}/vad_model_embed.c")
+        target_include_directories(VREngine PRIVATE "${_incbin_dir}")
         target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_VAD=1)
     else()
         target_compile_definitions(VREngine PRIVATE VRENGINE_HAS_EMBEDDED_VAD=0)

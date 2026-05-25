@@ -19,8 +19,9 @@ public:
 
     // Opens the microphone and starts the pipeline.
     // onTranscript is called on the JUCE message thread for each utterance.
-    // Returns false if audio device init fails.
-    bool start (TranscriptCallback onTranscript);
+    // modelName: "Tiny", "Base", or "Small" — selects which Whisper HEF to load.
+    // Returns false if audio device init or HEF load fails.
+    bool start (TranscriptCallback onTranscript, const juce::String& modelName = "Tiny");
     void stop();
     bool isRunning() const noexcept { return running.load(); }
 

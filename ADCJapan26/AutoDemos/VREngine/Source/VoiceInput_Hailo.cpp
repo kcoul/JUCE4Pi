@@ -46,13 +46,12 @@ constexpr double vadEndSilenceSeconds = 0.28;
 constexpr double vadMaxUtteranceSeconds = 2.5;
 constexpr float  vadSpeechThreshold   = 0.50f;
 constexpr auto   hailoVDeviceGroupId  = "SHARED";
-constexpr auto   hailoHefFilename     = "Whisper-Tiny.hef";
 
-static std::string findHailoWhisperHef()
+static std::string findHailoWhisperHef (const juce::String& modelName)
 {
     const auto binary = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
     const auto home   = juce::File::getSpecialLocation (juce::File::userHomeDirectory);
-    const auto name   = juce::String (hailoHefFilename);
+    const auto name   = "Whisper-" + modelName + ".hef";
 
     const juce::File candidates[] = {
         binary.getParentDirectory().getChildFile ("models/hailo10h").getChildFile (name),
@@ -64,9 +63,8 @@ static std::string findHailoWhisperHef()
         if (f.existsAsFile())
             return f.getFullPathName().toStdString();
 
-    throw std::runtime_error (
-        std::string ("Hailo Whisper HEF not found: ") + hailoHefFilename
-        + ". Place it next to the binary in models/hailo10h/");
+    throw std::runtime_error ("Hailo Whisper HEF not found: " + name.toStdString()
+                              + ". Place it next to the binary in models/hailo10h/");
 }
 
 static std::shared_ptr<hailort::VDevice> createSharedHailoVDevice()
@@ -121,7 +119,7 @@ VoiceInputThread::~VoiceInputThread()
     stop();
 }
 
-bool VoiceInputThread::start (TranscriptCallback onTranscript)
+bool VoiceInputThread::start (TranscriptCallback onTranscript, const juce::String& modelName)
 {
     if (running.load())
         return true;
@@ -129,7 +127,7 @@ bool VoiceInputThread::start (TranscriptCallback onTranscript)
     std::string hefPath;
     try
     {
-        hefPath = findHailoWhisperHef();
+        hefPath = findHailoWhisperHef (modelName);
     }
     catch (const std::exception& e)
     {
