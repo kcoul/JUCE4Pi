@@ -32,6 +32,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
@@ -65,6 +66,14 @@ static std::string findHailoWhisperHef (const juce::String& modelName)
 
     throw std::runtime_error ("Hailo Whisper HEF not found: " + name.toStdString()
                               + ". Place it next to the binary in models/hailo10h/");
+}
+
+static void vrEngineWhisperLog (enum ggml_log_level level, const char* text, void*)
+{
+    if (level < GGML_LOG_LEVEL_WARN || text == nullptr)
+        return;
+    std::fputs (text, stderr);
+    std::fflush (stderr);
 }
 
 static std::shared_ptr<hailort::VDevice> createSharedHailoVDevice()
@@ -231,6 +240,8 @@ void VoiceInputThread::audioDeviceIOCallbackWithContext (const float* const* inp
 
 void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefPath)
 {
+    whisper_log_set (vrEngineWhisperLog, nullptr);
+
     // ── VAD init ─────────────────────────────────────────────────────────────
     auto vadParams          = whisper_vad_default_context_params();
     vadParams.n_threads     = juce::jlimit (1, 4, static_cast<int> (std::thread::hardware_concurrency()));
