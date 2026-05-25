@@ -9,7 +9,8 @@
 #       libasound2-dev:arm64 \
 #       libfreetype-dev:arm64 libfontconfig1-dev:arm64 \
 #       libx11-dev:arm64 libxrandr-dev:arm64 libxinerama-dev:arm64 \
-#       libxcursor-dev:arm64 libxext-dev:arm64
+#       libxcursor-dev:arm64 libxext-dev:arm64 \
+#       libonnxruntime-dev:arm64
 #
 # Usage:
 #   ./build.sh             # VRENGINE_HAS_HAILO=ON   (default)

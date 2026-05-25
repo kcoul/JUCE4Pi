@@ -1,6 +1,6 @@
 // Hailo NPU voice pipeline for VREngine.
-// Silero VAD (via whisper.cpp) detects utterance boundaries; Hailo Speech2Text transcribes.
-// No whisper.cpp CPU/GPU inference — NPU only.
+// Silero VAD (via ONNX Runtime) detects utterance boundaries; Hailo Speech2Text transcribes.
+// No whisper.cpp dependency — Hailo-only path throughout.
 
 // Windows COM headers (included via HailoRT's platform.h) define `interface` as `struct`,
 // which conflicts with HailoRT's use of `interface` as a parameter name in hailort_defaults.hpp.
@@ -16,37 +16,27 @@
 #  include <hailo/hailort_defaults.hpp>
 #endif
 
-#include <whisper.h>
-
-#ifndef VRENGINE_HAS_EMBEDDED_VAD
-#define VRENGINE_HAS_EMBEDDED_VAD 0
-#endif
-
-#if VRENGINE_HAS_EMBEDDED_VAD
-#include "embedded_vad_model.h"
-#endif
-
+#include "SileroVad.h"
 #include "VoiceInput_Hailo.h"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
-#include <cstdio>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
 
 namespace
 {
-constexpr int    whisperSampleRate    = 16000;
-constexpr double vadFrameSeconds      = 0.04;
-constexpr double vadPreRollSeconds    = 0.25;
-constexpr double vadMinSpeechSeconds  = 0.18;
-constexpr double vadEndSilenceSeconds = 0.28;
+constexpr int    whisperSampleRate      = 16000;
+constexpr double vadFrameSeconds        = static_cast<double> (SileroVad::kWindowSamples) / whisperSampleRate;
+constexpr double vadPreRollSeconds      = 0.25;
+constexpr double vadMinSpeechSeconds    = 0.18;
+constexpr double vadEndSilenceSeconds   = 0.28;
 constexpr double vadMaxUtteranceSeconds = 2.5;
-constexpr float  vadSpeechThreshold   = 0.50f;
-constexpr auto   hailoVDeviceGroupId  = "SHARED";
+constexpr float  vadSpeechThreshold     = 0.50f;
+constexpr auto   hailoVDeviceGroupId    = "SHARED";
 
 static std::string findHailoWhisperHef (const juce::String& modelName)
 {
@@ -68,14 +58,6 @@ static std::string findHailoWhisperHef (const juce::String& modelName)
                               + ". Place it next to the binary in models/hailo10h/");
 }
 
-static void vrEngineWhisperLog (enum ggml_log_level level, const char* text, void*)
-{
-    if (level < GGML_LOG_LEVEL_WARN || text == nullptr)
-        return;
-    std::fputs (text, stderr);
-    std::fflush (stderr);
-}
-
 static std::shared_ptr<hailort::VDevice> createSharedHailoVDevice()
 {
     hailo_vdevice_params_t params {};
@@ -91,34 +73,6 @@ static std::shared_ptr<hailort::VDevice> createSharedHailoVDevice()
 
     return vdevice.release();
 }
-
-#if VRENGINE_HAS_EMBEDDED_VAD
-struct EmbeddedBufferState
-{
-    const unsigned char* data;
-    size_t size;
-    size_t pos { 0 };
-};
-
-static size_t embeddedBufferRead (void* ctx, void* out, size_t n)
-{
-    auto* s = static_cast<EmbeddedBufferState*> (ctx);
-    const auto avail  = s->size - s->pos;
-    const auto toRead = std::min (n, avail);
-    std::memcpy (out, s->data + s->pos, toRead);
-    s->pos += toRead;
-    return toRead;
-}
-
-static bool embeddedBufferEof (void* ctx)
-{
-    auto* s = static_cast<EmbeddedBufferState*> (ctx);
-    return s->pos >= s->size;
-}
-
-static void embeddedBufferClose (void*) {}
-#endif
-
 } // namespace
 
 // =============================================================================
@@ -240,32 +194,15 @@ void VoiceInputThread::audioDeviceIOCallbackWithContext (const float* const* inp
 
 void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefPath)
 {
-    whisper_log_set (vrEngineWhisperLog, nullptr);
-
-    // ── VAD init ─────────────────────────────────────────────────────────────
-    auto vadParams          = whisper_vad_default_context_params();
-    vadParams.n_threads     = juce::jlimit (1, 4, static_cast<int> (std::thread::hardware_concurrency()));
-    vadParams.use_gpu       = false;
-
-#if VRENGINE_HAS_EMBEDDED_VAD
-    EmbeddedBufferState vadBufState { ggml_silero_vad_model, ggml_silero_vad_model_size };
-    whisper_model_loader vadLoader { &vadBufState, embeddedBufferRead, embeddedBufferEof, embeddedBufferClose };
-    std::unique_ptr<whisper_vad_context, decltype (&whisper_vad_free)> vadCtx (
-        whisper_vad_init_with_params (&vadLoader, vadParams), whisper_vad_free);
-#else
-    // Fallback: look next to the binary.
+    // ── Silero VAD init ───────────────────────────────────────────────────────
     const auto vadModelFile = juce::File::getSpecialLocation (juce::File::currentExecutableFile)
-                                  .getParentDirectory()
-                                  .getChildFile ("models/ggml-silero-v6.2.0.bin");
-    std::unique_ptr<whisper_vad_context, decltype (&whisper_vad_free)> vadCtx (
-        whisper_vad_init_from_file_with_params (vadModelFile.getFullPathName().toRawUTF8(), vadParams),
-        whisper_vad_free);
-#endif
-
-    if (vadCtx == nullptr)
+                                  .getParentDirectory().getChildFile ("silero_vad.onnx");
+    std::unique_ptr<SileroVad> vad;
+    try { vad = std::make_unique<SileroVad> (vadModelFile.getFullPathName().toStdString()); }
+    catch (const std::exception& e)
     {
-        juce::MessageManager::callAsync ([this] {
-            juce::Logger::writeToLog ("VoiceInputThread: VAD model load failed");
+        juce::MessageManager::callAsync ([this, msg = juce::String (e.what())] {
+            juce::Logger::writeToLog ("VoiceInputThread: Silero VAD init failed: " + msg);
             running.store (false);
         });
         return;
@@ -295,12 +232,7 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         return;
     }
 
-    // ── Pre-compute sample counts ─────────────────────────────────────────────
-    {
-        std::lock_guard<std::mutex> lock (mutex);
-        micBuffer.clear();
-    }
-    whisper_vad_reset_state (vadCtx.get());
+    { std::lock_guard<std::mutex> lock (mutex); micBuffer.clear(); }
 
     const auto preRollSamples    = static_cast<size_t> (vadPreRollSeconds    * whisperSampleRate);
     const auto minSpeechSamples  = static_cast<size_t> (vadMinSpeechSeconds  * whisperSampleRate);
@@ -344,16 +276,12 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         if (pcm16k.empty())
             continue;
 
-        if (! whisper_vad_detect_speech_no_reset (vadCtx.get(), pcm16k.data(), static_cast<int> (pcm16k.size())))
-            continue;
+        // Pad to Silero window size if resampling gave slightly fewer samples.
+        if (pcm16k.size() < static_cast<size_t> (SileroVad::kWindowSamples))
+            pcm16k.resize (static_cast<size_t> (SileroVad::kWindowSamples), 0.0f);
 
-        const auto  nProbs = whisper_vad_n_probs (vadCtx.get());
-        const auto* probs  = whisper_vad_probs (vadCtx.get());
-        float maxProb = 0.0f;
-        for (int i = 0; probs != nullptr && i < nProbs; ++i)
-            maxProb = std::max (maxProb, probs[i]);
-
-        const bool frameHasSpeech = maxProb >= vadSpeechThreshold;
+        const float prob          = vad->predict (pcm16k.data());
+        const bool  frameHasSpeech = (prob >= vadSpeechThreshold);
 
         if (! speechActive)
         {
@@ -376,8 +304,8 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         if (frameHasSpeech) silenceSamples = 0;
         else                 silenceSamples += pcm16k.size();
 
-        const bool hasEnoughSpeech  = utterance.size() >= minSpeechSamples;
-        const bool reachedEndSilence = silenceSamples >= endSilenceSamples;
+        const bool hasEnoughSpeech   = utterance.size() >= minSpeechSamples;
+        const bool reachedEndSilence  = silenceSamples  >= endSilenceSamples;
         const bool reachedMaxDuration = utterance.size() >= maxUtterSamples;
 
         if (! reachedMaxDuration && (! hasEnoughSpeech || ! reachedEndSilence))
@@ -423,7 +351,7 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         silenceSamples = 0;
         utterance.clear();
         preRoll.clear();
-        whisper_vad_reset_state (vadCtx.get());
+        vad->reset();
     }
 }
 
