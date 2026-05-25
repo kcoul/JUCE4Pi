@@ -1,90 +1,81 @@
 #!/usr/bin/env bash
-# Cross-compile VREngine for aarch64 Ubuntu Linux (RPi 5) from x86_64 Linux / WSL2.
+# Cross-compile VREngine for aarch64 Ubuntu/RPi OS (RPi5) from WSL2.
 #
-# Prerequisites (WSL2/Ubuntu host):
-#   sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libfreetype6-dev
+# Prerequisites (WSL2/Ubuntu host) — same as GENISYS:
+#   sudo apt install cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+#   sudo dpkg --add-architecture arm64
+#   sudo apt update
+#   sudo apt install \
+#       libasound2-dev:arm64 \
+#       libfreetype-dev:arm64 libfontconfig1-dev:arm64 \
+#       libx11-dev:arm64 libxrandr-dev:arm64 libxinerama-dev:arm64 \
+#       libxcursor-dev:arm64 libxext-dev:arm64
 #
 # Usage:
-#   ./build.sh
-#
-# If your cross-compiler needs a sysroot (for finding target X11/ALSA headers),
-# set SYSROOT before calling: export SYSROOT=/path/to/rpi5-sysroot
+#   ./build.sh             # VRENGINE_HAS_HAILO=ON   (default)
+#   ./build.sh --no-hailo  # VRENGINE_HAS_HAILO=OFF  (OSC + UI only)
 
 set -euo pipefail
 
-CXX="${CXX:-aarch64-linux-gnu-g++}"
-CC="${CC:-aarch64-linux-gnu-gcc}"
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-JUCE_ROOT="$SCRIPT_DIR/../../surge/libs/JUCE"
-SRC_DIR="$SCRIPT_DIR/Source"
-BUILD_DIR="$SCRIPT_DIR/build/aarch64-linux"
+AUTODEMOS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"   # AutoDemos/ is the CMake source root
+BUILD_DIR="$SCRIPT_DIR/build"
+NATIVE_BUILD="$BUILD_DIR/native"
+CROSS_BUILD="$BUILD_DIR/aarch64-linux"
+DIST_DIR="$BUILD_DIR/dist"
+TOOLCHAIN="$SCRIPT_DIR/../../GENISYS/cmake/toolchain-aarch64-linux.cmake"
 
-SYSROOT_FLAGS=()
-if [[ -n "${SYSROOT:-}" ]]; then
-    SYSROOT_FLAGS=("--sysroot=$SYSROOT")
+HAILO=ON
+if [[ "${1:-}" == "--no-hailo" ]]; then
+    HAILO=OFF
 fi
 
-mkdir -p "$BUILD_DIR"
+# ── Step 1: Native configure (bootstraps juceaide) ───────────────────────────
+echo "=== Step 1: Native configure (bootstraps juceaide) ==="
+cmake -S "$AUTODEMOS_DIR" -B "$NATIVE_BUILD" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DVRENGINE_HAS_HAILO=OFF \
+    -G Ninja
 
-COMMON=(
-    "${SYSROOT_FLAGS[@]}"
-    -std=gnu++17
-    -DJUCE_GLOBAL_MODULE_SETTINGS_INCLUDED=1
-    -DJUCE_USE_CURL=0
-    -DJUCE_WEB_BROWSER=0
-    -DJUCE_JACK=0
-    -DJUCE_ALSA=1
-    -DJUCE_USE_FONTCONFIG=1
-    "-I$JUCE_ROOT"
-    "-I$JUCE_ROOT/modules"
-    "-I$SRC_DIR"
-    -I/usr/include/freetype2
-)
+JUCEAIDE_EXE="$(find "$NATIVE_BUILD/JUCE" -name "juceaide" -type f 2>/dev/null | head -1)"
+if [[ -z "$JUCEAIDE_EXE" || ! -x "$JUCEAIDE_EXE" ]]; then
+    echo "ERROR: juceaide binary not found under $NATIVE_BUILD/JUCE"
+    exit 1
+fi
+echo "  juceaide: $JUCEAIDE_EXE"
 
-echo "Compiling JUCE modules..."
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_core/juce_core.cpp"                        -o "$BUILD_DIR/juce_core.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_core/juce_core_CompilationTime.cpp"        -o "$BUILD_DIR/juce_core_CompilationTime.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_events/juce_events.cpp"                    -o "$BUILD_DIR/juce_events.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_graphics/juce_graphics.cpp"                -o "$BUILD_DIR/juce_graphics.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_graphics/juce_graphics_Harfbuzz.cpp"       -o "$BUILD_DIR/juce_graphics_Harfbuzz.o"
-$CC  "${SYSROOT_FLAGS[@]}" -DSB_CONFIG_UNITY=1 -I"$JUCE_ROOT" -I"$JUCE_ROOT/modules" \
-    -c "$JUCE_ROOT/modules/juce_graphics/unicode/sheenbidi/Source/SheenBidi.c"             -o "$BUILD_DIR/SheenBidi.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_data_structures/juce_data_structures.cpp"  -o "$BUILD_DIR/juce_data_structures.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_gui_basics/juce_gui_basics.cpp"            -o "$BUILD_DIR/juce_gui_basics.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_gui_basics/juce_gui_basics_2.cpp"          -o "$BUILD_DIR/juce_gui_basics_2.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_gui_basics/juce_gui_basics_3.cpp"          -o "$BUILD_DIR/juce_gui_basics_3.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_gui_basics/juce_gui_basics_4.cpp"          -o "$BUILD_DIR/juce_gui_basics_4.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_gui_basics/juce_gui_basics_5.cpp"          -o "$BUILD_DIR/juce_gui_basics_5.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_audio_basics/juce_audio_basics.cpp"        -o "$BUILD_DIR/juce_audio_basics.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_audio_devices/juce_audio_devices.cpp"      -o "$BUILD_DIR/juce_audio_devices.o"
-$CXX "${COMMON[@]}" -c "$JUCE_ROOT/modules/juce_osc/juce_osc.cpp"                          -o "$BUILD_DIR/juce_osc.o"
+# ── Step 2: Cross-compile VREngine for aarch64 ──────────────────────────────
+echo ""
+echo "=== Step 2: Cross-compile VREngine for aarch64 (VRENGINE_HAS_HAILO=$HAILO) ==="
+cmake -S "$AUTODEMOS_DIR" -B "$CROSS_BUILD" \
+    -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
+    -DJUCE_JUCEAIDE_PATH="$JUCEAIDE_EXE" \
+    -DVRENGINE_HAS_HAILO="$HAILO" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -G Ninja
+cmake --build "$CROSS_BUILD" --target VREngine
 
-echo "Compiling VREngine..."
-$CXX "${COMMON[@]}" -c "$SRC_DIR/Main.cpp" -o "$BUILD_DIR/Main.o"
+# ── Step 3: Collect binary and models into dist/ ─────────────────────────────
+mkdir -p "$DIST_DIR"
+echo ""
+echo "=== Collecting ==="
 
-echo "Linking..."
-$CXX "${SYSROOT_FLAGS[@]}" \
-    "$BUILD_DIR/juce_core.o" \
-    "$BUILD_DIR/juce_core_CompilationTime.o" \
-    "$BUILD_DIR/juce_events.o" \
-    "$BUILD_DIR/juce_graphics.o" \
-    "$BUILD_DIR/juce_graphics_Harfbuzz.o" \
-    "$BUILD_DIR/SheenBidi.o" \
-    "$BUILD_DIR/juce_data_structures.o" \
-    "$BUILD_DIR/juce_gui_basics.o" \
-    "$BUILD_DIR/juce_gui_basics_2.o" \
-    "$BUILD_DIR/juce_gui_basics_3.o" \
-    "$BUILD_DIR/juce_gui_basics_4.o" \
-    "$BUILD_DIR/juce_gui_basics_5.o" \
-    "$BUILD_DIR/juce_audio_basics.o" \
-    "$BUILD_DIR/juce_audio_devices.o" \
-    "$BUILD_DIR/juce_osc.o" \
-    "$BUILD_DIR/Main.o" \
-    -lpthread -ldl -lrt -lasound \
-    -lX11 -lXext -lXinerama -lXcursor -lXrandr \
-    -lGL -lfreetype -lfontconfig \
-    -lz -lexpat \
-    -o "$BUILD_DIR/VREngine"
+src="$(find "$CROSS_BUILD" -type f -name "VREngine" ! -path "*/_deps/*" 2>/dev/null | head -1)"
+if [[ -n "$src" ]]; then
+    cp "$src" "$DIST_DIR/VREngine"
+    echo "  → dist/VREngine"
+else
+    echo "  WARNING: VREngine binary not found in $CROSS_BUILD"
+fi
 
-echo "Built: $BUILD_DIR/VREngine"
+HEF_SRC="$(find "$CROSS_BUILD" -type d -name "hailo10h" ! -path "*/_deps/*" 2>/dev/null | head -1)"
+if [[ -n "$HEF_SRC" && -d "$HEF_SRC" ]]; then
+    mkdir -p "$DIST_DIR/models/hailo10h"
+    if cp "$HEF_SRC/"*.hef "$DIST_DIR/models/hailo10h/" 2>/dev/null; then
+        echo "  → dist/models/hailo10h/*.hef"
+    fi
+fi
+
+echo ""
+echo "=== Done ==="
+echo "  Run:  python deploy.py --target-ip <pi-ip>"
