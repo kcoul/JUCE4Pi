@@ -38,7 +38,12 @@ else()
         URL      "${_ort_url}"
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
     FetchContent_MakeAvailable(onnxruntime_fetch)
-    set(_ort_dir "${onnxruntime_fetch_SOURCE_DIR}")
+    # FetchContent does not strip the archive top-level directory.
+    # The .tgz extracts to SOURCE_DIR/onnxruntime-linux-<arch>-<ver>/
+    set(_ort_dir "${onnxruntime_fetch_SOURCE_DIR}/${_ort_pkg}")
+    if(NOT EXISTS "${_ort_dir}")
+        set(_ort_dir "${onnxruntime_fetch_SOURCE_DIR}")
+    endif()
 endif()
 
 find_path(_ort_inc
