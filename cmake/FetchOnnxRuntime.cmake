@@ -9,7 +9,7 @@
 #   cmake ... -DONNXRUNTIME_LIB_DIR=/path/to/onnxruntime-linux-aarch64-1.26.0
 #
 # Expected layout inside ONNXRUNTIME_LIB_DIR:
-#   include/onnxruntime/core/session/onnxruntime_cxx_api.h
+#   include/onnxruntime_cxx_api.h  (flat — no onnxruntime/core/session/ nesting)
 #   lib/libonnxruntime.so  (or libonnxruntime.so.1.x.x)
 
 if(TARGET onnxruntime::onnxruntime)
@@ -57,6 +57,7 @@ find_path(_ort_inc
         include/onnxruntime/core/session
         include
     NO_DEFAULT_PATH
+    NO_CMAKE_FIND_ROOT_PATH
     REQUIRED)
 
 find_library(_ort_lib
@@ -64,6 +65,7 @@ find_library(_ort_lib
     PATHS ${_ort_search_dirs}
     PATH_SUFFIXES lib lib64
     NO_DEFAULT_PATH
+    NO_CMAKE_FIND_ROOT_PATH
     REQUIRED)
 
 # Expose the .so directory so callers can copy it next to the binary.
