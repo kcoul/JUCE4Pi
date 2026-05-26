@@ -665,11 +665,103 @@ def add_s03_agenda(prs):
     return slide
 
 
-def add_s04_divider_s1(prs):
+def add_s04_journey(prs):
+    """
+    S1.0 — Full development journey: JUCE port → NPU research → Bridge workbench
+    → Dual-Pi evaluation → Production split (DataBridge / VREngine / GENISYS).
+    Two rows: 4 R&D phase nodes across the top; 3 production nodes below,
+    connected via an org-chart distribution drop.
+    """
+    from pptx.oxml.ns import qn as _qn
+    import lxml.etree as _etree
+
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "The Development Journey")
+
+    # ── Row 1: 4 R&D phase nodes ───────────────────────────────────────────────
+    NW, NH  = 2.30, 0.72
+    AW, AH  = 0.28, 0.22
+    PHASE_Y = 2.10
+    r1_total = 4 * NW + 3 * 0.40
+    X0 = (13.33 - r1_total) / 2          # ~1.465"
+    phase_xs = [X0 + i * (NW + 0.40) for i in range(4)]
+
+    phases = [
+        ("JUCE Port to QNX",    "SurgeXT stress test · Pi4",     RED),
+        ("NPU Research",         "Whisper · Hailo · Qualcomm",    GRAY3),
+        ("Bridge Workbench",     "MIDI-OSC + Voice · host-first", GRAY3),
+        ("Dual-Pi Evaluation",   "Pi4 QNX · Pi5 Ubuntu + NPU",   GRAY3),
+    ]
+    for (title, sub, fill), x in zip(phases, phase_xs):
+        add_node(slide, x, PHASE_Y, NW, NH, [title], fill, font_size=10.5)
+        add_label(slide, x, PHASE_Y + NH + 0.06, NW, 0.24,
+                  sub, GRAY1, font_size=7.5, align=PP_ALIGN.CENTER)
+
+    for i in range(3):
+        ax = phase_xs[i] + NW + (0.40 - AW) / 2
+        ay = PHASE_Y + (NH - AH) / 2
+        add_arrow(slide, ax, ay, AW, AH, GRAY1)
+
+    # ── Distribution connector: phase row → production row ─────────────────────
+    SUB_H   = 0.24
+    DIST_Y  = PHASE_Y + NH + 0.06 + SUB_H + 0.18   # below sub-labels  ~3.30"
+    BRANCH_Y = DIST_Y + 0.38                          # horizontal bar    ~3.68"
+    PROD_Y   = BRANCH_Y + 0.26                        # top of prod nodes ~3.94"
+    center_x = 13.33 / 2                              # 6.665"
+
+    # ── Row 2: 3 production nodes ──────────────────────────────────────────────
+    PW, PH   = 3.20, 0.76
+    r2_total = 3 * PW + 2 * 0.40
+    PX0      = (13.33 - r2_total) / 2
+    prod_xs  = [PX0 + i * (PW + 0.40) for i in range(3)]
+    prod_cxs = [x + PW / 2 for x in prod_xs]
+
+    prod_items = [
+        ("DataBridge",  "AVAS/ESE · Pi4 QNX",            RED),
+        ("VREngine",    "Voice recognition · Pi5 Ubuntu", RED),
+        ("GENISYS",     "Studio system · Pi5 backend",    PURPLE),
+    ]
+    for (title, sub, fill), x in zip(prod_items, prod_xs):
+        add_node(slide, x, PROD_Y, PW, PH, [title], DARK1,
+                 text_color=fill, font_size=11)
+        add_label(slide, x, PROD_Y + PH + 0.06, PW, 0.24,
+                  sub, GRAY1, font_size=7.5, align=PP_ALIGN.CENTER)
+
+    # ── Org-chart drop connectors ──────────────────────────────────────────────
+    def _seg(x1, y1, x2, y2, head=False):
+        c = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            Inches(x1), Inches(y1), Inches(x2), Inches(y2),
+        )
+        c.line.color.rgb = GRAY1
+        c.line.width = Pt(1.0)
+        if head:
+            ln = c.line._ln
+            if ln is not None:
+                he = _etree.SubElement(ln, _qn("a:headEnd"))
+                he.set("type", "arrow")
+                he.set("w", "sm")
+                he.set("len", "sm")
+        return c
+
+    _seg(center_x, DIST_Y, center_x, BRANCH_Y)
+    _seg(prod_cxs[0], BRANCH_Y, prod_cxs[-1], BRANCH_Y)
+    for cx in prod_cxs:
+        _seg(cx, BRANCH_Y, cx, PROD_Y, head=True)
+
+    add_label(slide, center_x - 1.8, BRANCH_Y - 0.22, 3.6, 0.20,
+              "Section 6: From R&D to Production",
+              RED, font_size=7.5, bold=True, align=PP_ALIGN.CENTER)
+
+    return slide
+
+
+def add_s05_divider_s1(prs):
     return add_divider(prs, 1, "The Story So Far")
 
 
-def add_s05_recap_adc21(prs):
+def add_s06_recap_adc21(prs):
     return add_quadrant_slide(
         prs,
         title="Recap",
@@ -687,7 +779,7 @@ def add_s05_recap_adc21(prs):
     )
 
 
-def add_s06_recap_adcx23(prs):
+def add_s07_recap_adcx23(prs):
     return add_quadrant_slide(
         prs,
         title="Recap",
@@ -705,11 +797,11 @@ def add_s06_recap_adcx23(prs):
     )
 
 
-def add_s07_divider_s2(prs):
+def add_s08_divider_s2(prs):
     return add_divider(prs, 2, "JUCE on QNX")
 
 
-def add_s08_qnx_everywhere(prs):
+def add_s09_qnx_everywhere(prs):
     """S2.1 — QNX Everywhere initiative: JUCE as a natural porting target."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -735,7 +827,7 @@ def add_s08_qnx_everywhere(prs):
     return slide
 
 
-def add_s09_it_works(prs):
+def add_s10_it_works(prs):
     """S2.2 — Video: SurgeXT running on QNX. No title; auto-plays fullscreen."""
     return add_video_slide(
         prs,
@@ -743,7 +835,7 @@ def add_s09_it_works(prs):
     )
 
 
-def add_s10_juce_porting_lessons(prs):
+def add_s11_juce_porting_lessons(prs):
     """S2.3 — What was quick vs what was genuinely hard in the JUCE port."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -769,7 +861,7 @@ def add_s10_juce_porting_lessons(prs):
     return slide
 
 
-def add_s11_screen_framework(prs):
+def add_s12_screen_framework(prs):
     """
     S2.4 — Architecture diagram: how JUCE connects to the QNX Screen Framework.
 
@@ -877,7 +969,7 @@ def add_s11_screen_framework(prs):
     return slide
 
 
-def add_s12_tracktion_engine(prs):
+def add_s13_tracktion_engine(prs):
     """S2.6 — Tracktion Engine on QNX: hinting at internal automotive eval use."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -901,11 +993,11 @@ def add_s12_tracktion_engine(prs):
     return slide
 
 
-def add_s13_divider_s3(prs):
+def add_s14_divider_s3(prs):
     return add_divider(prs, 3, "Audio on the NPU")
 
 
-def add_s14_npu_pros_cons(prs):
+def add_s15_npu_pros_cons(prs):
     """
     S3.1 — Audio on the NPU: Pros & Cons.
     Adapted from QNX Slide Library slide 46 (Gain & Loss layout).
@@ -1000,7 +1092,7 @@ def add_s14_npu_pros_cons(prs):
     return slide
 
 
-def add_s15_hailo_hardware(prs):
+def add_s16_hailo_hardware(prs):
     """
     S3.2 — NPU bring-up: three steps from Windows CPU-only → Ubuntu NPU dev
     → RPi5 target deployment.  A return arrow shows that Hailo support was
@@ -1082,7 +1174,7 @@ def add_s15_hailo_hardware(prs):
     return slide
 
 
-def add_s16_qnx_hailo_status(prs):
+def add_s17_qnx_hailo_status(prs):
     """S3.3 — Why QNX isn't in the Hailo bring-up story: 10H not yet supported."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -1096,7 +1188,7 @@ def add_s16_qnx_hailo_status(prs):
     return slide
 
 
-def add_s17_npu_speed_result(prs):
+def add_s18_npu_speed_result(prs):
     """S3.3 — The headline result: CPU vs Hailo 10-H on Whisper inference."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1122,11 +1214,11 @@ def add_s17_npu_speed_result(prs):
     return slide
 
 
-def add_s18_divider_s4(prs):
+def add_s19_divider_s4(prs):
     return add_divider(prs, 4, "Developing Host-First")
 
 
-def add_s19_whispercpp_testbench(prs):
+def add_s20_whispercpp_testbench(prs):
     """S4.1 — SurgeMIDIToOSCBridge: one combined tool serving two distinct roles."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1152,7 +1244,7 @@ def add_s19_whispercpp_testbench(prs):
     return slide
 
 
-def add_s20_testbench_video(prs):
+def add_s21_testbench_video(prs):
     """S4.2 — Video: Bridge running on host CPU (shoot late, wait for polished GUI)."""
     return add_video_slide(
         prs,
@@ -1161,7 +1253,7 @@ def add_s20_testbench_video(prs):
     )
 
 
-def add_s21_midi_osc_features(prs):
+def add_s22_midi_osc_features(prs):
     """S4.3 — MIDI mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1187,7 +1279,7 @@ def add_s21_midi_osc_features(prs):
     return slide
 
 
-def add_s22_voice_api_features(prs):
+def add_s23_voice_api_features(prs):
     """S4.4 — Voice API mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1213,11 +1305,11 @@ def add_s22_voice_api_features(prs):
     return slide
 
 
-def add_s23_divider_s5(prs):
+def add_s24_divider_s5(prs):
     return add_divider(prs, 5, "Getting to the Target")
 
 
-def add_s24_midi_osc_bridge(prs):
+def add_s25_midi_osc_bridge(prs):
     """
     S5.1 — The Bridge as the vehicle that 'got to the target'.
     Host-side NPU access + 3 identical chips = incremental dev without
@@ -1254,7 +1346,7 @@ def add_s24_midi_osc_bridge(prs):
     return slide
 
 
-def add_s25_host_target_support_matrix(prs):
+def add_s26_host_target_support_matrix(prs):
     """
     S5.2 — Adapted from QNX Slide Library slide 41: four process steps.
     Shows the practical path for host-first development across Linux and QNX.
@@ -1305,7 +1397,7 @@ def add_s25_host_target_support_matrix(prs):
     return slide
 
 
-def add_s26_signal_chain(prs):
+def add_s27_signal_chain(prs):
     """
     S5.3 — Full system signal chain: HOST nodes left, TARGET nodes right,
     separated by a purple boundary line.
@@ -1354,7 +1446,7 @@ def add_s26_signal_chain(prs):
     return slide
 
 
-def add_s27_cpu_npu_speedup_video(prs):
+def add_s28_cpu_npu_speedup_video(prs):
     """S5.4 — Video: CPU vs NPU speed comparison."""
     return add_video_slide(
         prs,
@@ -1363,7 +1455,7 @@ def add_s27_cpu_npu_speedup_video(prs):
     )
 
 
-def add_s28_signal_chain_full_target(prs):
+def add_s29_signal_chain_full_target(prs):
     """
     S5.5 — Same six nodes as s23, but ALL running on the target.
     No HOST/TARGET split — the boundary line is gone.
@@ -1405,7 +1497,7 @@ def add_s28_signal_chain_full_target(prs):
     return slide
 
 
-def add_s28_punchline(prs):
+def add_sXX_punchline(prs):
     """The payoff moment — spoken BEFORE Video clip 4 plays."""
     lyt   = get_layout(prs, 1, "Statement")
     slide = prs.slides.add_slide(lyt)
@@ -1418,7 +1510,7 @@ def add_s28_punchline(prs):
     return slide
 
 
-def add_s36_full_demo_video(prs):
+def add_s38_full_demo_video(prs):
     """Post-punchline full demo video."""
     return add_video_slide(
         prs,
@@ -1453,7 +1545,7 @@ def add_s02_dedication(prs):
     return slide
 
 
-def add_s36_contact(prs):
+def add_s37_contact(prs):
     """Final slide — Contact card layout."""
     lyt   = get_layout(prs, 1, "Contact")
     slide = prs.slides.add_slide(lyt)
@@ -1533,11 +1625,11 @@ def add_s36_contact(prs):
 
 # ── Section 6 slides s29 – s35 ────────────────────────────────────────────────
 
-def add_s29_divider_s6(prs):
+def add_s30_divider_s6(prs):
     return add_divider(prs, 6, "From R&D to Production")
 
 
-def add_s30_databridge_demo(prs):
+def add_s31_databridge_demo(prs):
     """S6.1 — DataBridge: MIDI-to-OSC data conversion in a production DAW context."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1563,7 +1655,7 @@ def add_s30_databridge_demo(prs):
     return slide
 
 
-def add_s31_databridge_video(prs):
+def add_s32_databridge_video(prs):
     """S6.2 — DataBridge live demo video."""
     return add_video_slide(
         prs,
@@ -1572,7 +1664,7 @@ def add_s31_databridge_video(prs):
     )
 
 
-def add_s32_vrengine_demo(prs):
+def add_s33_vrengine_demo(prs):
     """S6.3 — VREngine: voice-controlled UserPrefsPane on target."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1598,7 +1690,7 @@ def add_s32_vrengine_demo(prs):
     return slide
 
 
-def add_s33_vrengine_video(prs):
+def add_s34_vrengine_video(prs):
     """S6.4 — VREngine live demo video."""
     return add_video_slide(
         prs,
@@ -1607,7 +1699,7 @@ def add_s33_vrengine_video(prs):
     )
 
 
-def add_s34_genisys_demo(prs):
+def add_s35_genisys_demo(prs):
     """S6.5 — GENISYS: both features unified in Jason Dasent's vision."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1633,7 +1725,7 @@ def add_s34_genisys_demo(prs):
     return slide
 
 
-def add_s35_genisys_video(prs):
+def add_s36_genisys_video(prs):
     """S6.6 — GENISYS live demo video."""
     return add_video_slide(
         prs,
@@ -1650,39 +1742,40 @@ def main():
     add_s01_title(prs)
     add_s02_dedication(prs)
     add_s03_agenda(prs)
-    add_s04_divider_s1(prs)
-    add_s05_recap_adc21(prs)
-    add_s06_recap_adcx23(prs)
-    add_s07_divider_s2(prs)
-    add_s08_qnx_everywhere(prs)
-    add_s09_it_works(prs)
-    add_s10_juce_porting_lessons(prs)
-    add_s11_screen_framework(prs)
-    add_s12_tracktion_engine(prs)
-    add_s13_divider_s3(prs)
-    add_s14_npu_pros_cons(prs)
-    add_s15_hailo_hardware(prs)
-    add_s16_qnx_hailo_status(prs)
-    add_s17_npu_speed_result(prs)
-    add_s18_divider_s4(prs)
-    add_s19_whispercpp_testbench(prs)
-    add_s20_testbench_video(prs)
-    add_s21_midi_osc_features(prs)
-    add_s22_voice_api_features(prs)
-    add_s23_divider_s5(prs)
-    add_s24_midi_osc_bridge(prs)
-    add_s25_host_target_support_matrix(prs)
-    add_s26_signal_chain(prs)
-    add_s27_cpu_npu_speedup_video(prs)
-    add_s28_signal_chain_full_target(prs)
-    add_s29_divider_s6(prs)
-    add_s30_databridge_demo(prs)
-    add_s31_databridge_video(prs)
-    add_s32_vrengine_demo(prs)
-    add_s33_vrengine_video(prs)
-    add_s34_genisys_demo(prs)
-    add_s35_genisys_video(prs)
-    add_s36_contact(prs)
+    add_s04_journey(prs)
+    add_s05_divider_s1(prs)
+    add_s06_recap_adc21(prs)
+    add_s07_recap_adcx23(prs)
+    add_s08_divider_s2(prs)
+    add_s09_qnx_everywhere(prs)
+    add_s10_it_works(prs)
+    add_s11_juce_porting_lessons(prs)
+    add_s12_screen_framework(prs)
+    add_s13_tracktion_engine(prs)
+    add_s14_divider_s3(prs)
+    add_s15_npu_pros_cons(prs)
+    add_s16_hailo_hardware(prs)
+    add_s17_qnx_hailo_status(prs)
+    add_s18_npu_speed_result(prs)
+    add_s19_divider_s4(prs)
+    add_s20_whispercpp_testbench(prs)
+    add_s21_testbench_video(prs)
+    add_s22_midi_osc_features(prs)
+    add_s23_voice_api_features(prs)
+    add_s24_divider_s5(prs)
+    add_s25_midi_osc_bridge(prs)
+    add_s26_host_target_support_matrix(prs)
+    add_s27_signal_chain(prs)
+    add_s28_cpu_npu_speedup_video(prs)
+    add_s29_signal_chain_full_target(prs)
+    add_s30_divider_s6(prs)
+    add_s31_databridge_demo(prs)
+    add_s32_databridge_video(prs)
+    add_s33_vrengine_demo(prs)
+    add_s34_vrengine_video(prs)
+    add_s35_genisys_demo(prs)
+    add_s36_genisys_video(prs)
+    add_s37_contact(prs)
 
     prs.save(OUTPUT)
     print(f"Saved {len(prs.slides)} slides: {OUTPUT}")
