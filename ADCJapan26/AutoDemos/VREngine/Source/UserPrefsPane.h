@@ -28,6 +28,7 @@ public:
         diagLabel.setJustificationType (juce::Justification::centred);
         diagLabel.setFont (juce::FontOptions (11.0f));
         diagLabel.setColour (juce::Label::textColourId, juce::Colours::skyblue);
+        diagLabel.setText ("VAD: idle", juce::dontSendNotification);
         addAndMakeVisible (diagLabel);
 
         for (auto& p : profiles)
@@ -55,7 +56,7 @@ public:
 
     void showVadActivity (float prob)
     {
-        diagLabel.setText ("VAD " + juce::String (juce::roundToInt (prob * 100)) + "% — speech detected",
+        diagLabel.setText ("VAD " + juce::String (juce::roundToInt (prob * 100)) + "% - speech detected",
                            juce::dontSendNotification);
     }
 
@@ -66,10 +67,15 @@ public:
                            juce::dontSendNotification);
     }
 
+    void showDiagnosticStatus (const juce::String& text)
+    {
+        diagLabel.setText (text, juce::dontSendNotification);
+    }
+
     // Called by VREngine when Whisper produces a transcript.
     void handleVoiceInput (const juce::String& text)
     {
-        diagLabel.setText ({}, juce::dontSendNotification);
+        diagLabel.setText ("VAD: listening", juce::dontSendNotification);
         lastCommandLabel.setText ("Heard: \"" + text + "\"", juce::dontSendNotification);
 
         auto lower = text.toLowerCase();

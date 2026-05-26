@@ -28,14 +28,13 @@ sudo apt install \
     libxcursor-dev:arm64 libxext-dev:arm64
 ```
 
-ONNX Runtime (required for Silero VAD in the Hailo build) is fetched automatically at CMake configure time as the official pre-built shared library from [microsoft/onnxruntime v1.26.0](https://github.com/microsoft/onnxruntime/releases/tag/v1.26.0). No separate apt install is needed. The `libonnxruntime.so` is copied to `VREngine/build/dist/` alongside the binary and deployed to the Pi by `deploy.py`. To use a manually installed build instead, pass `-DONNXRUNTIME_LIB_DIR=/path/to/onnxruntime-linux-aarch64-1.26.0` to CMake.
+ONNX Runtime (required for Silero VAD) is fetched automatically at CMake configure time as the official pre-built shared library from [microsoft/onnxruntime v1.26.0](https://github.com/microsoft/onnxruntime/releases/tag/v1.26.0). No separate apt install is needed. The `libonnxruntime.so` is copied to `VREngine/build/dist/` alongside the binary and deployed to the Pi by `deploy.py`. To use a manually installed build instead, pass `-DONNXRUNTIME_LIB_DIR=/path/to/onnxruntime-linux-aarch64-1.26.0` to CMake.
 
 ### 3. Build
 
 ```bash
 cd ADCJapan26/AutoDemos
-./VREngine/build.sh             # default: VRENGINE_HAS_HAILO=ON
-./VREngine/build.sh --no-hailo  # OSC + UI only, no HailoRT SDK required
+./VREngine/build.sh
 ```
 
 Binary collected into `VREngine/build/dist/`.

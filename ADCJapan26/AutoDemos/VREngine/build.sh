@@ -12,46 +12,39 @@
 #       libxcursor-dev:arm64 libxext-dev:arm64
 #
 # Usage:
-#   ./build.sh             # VRENGINE_HAS_HAILO=ON   (default)
-#   ./build.sh --no-hailo  # VRENGINE_HAS_HAILO=OFF  (OSC + UI only)
+#   ./build.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AUTODEMOS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"   # AutoDemos/ is the CMake source root
 JUCE4PI_DIR="$(cd "$AUTODEMOS_DIR/../.." && pwd)"
+JUCE_DIR="$JUCE4PI_DIR/libs/JUCE"
 BUILD_DIR="$SCRIPT_DIR/build"
 NATIVE_BUILD="$BUILD_DIR/native"
 CROSS_BUILD="$BUILD_DIR/aarch64-linux"
 DIST_DIR="$BUILD_DIR/dist"
 TOOLCHAIN="$JUCE4PI_DIR/cmake/toolchain-aarch64-linux.cmake"
 
-HAILO=ON
-if [[ "${1:-}" == "--no-hailo" ]]; then
-    HAILO=OFF
-fi
-
 # ── Step 1: Native configure (bootstraps juceaide) ───────────────────────────
 echo "=== Step 1: Native configure (bootstraps juceaide) ==="
-cmake -S "$AUTODEMOS_DIR" -B "$NATIVE_BUILD" \
+cmake -S "$JUCE_DIR" -B "$NATIVE_BUILD" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DVRENGINE_HAS_HAILO=OFF \
     -G Ninja
 
-JUCEAIDE_EXE="$(find "$NATIVE_BUILD/JUCE" -name "juceaide" -type f 2>/dev/null | head -1)"
+JUCEAIDE_EXE="$(find "$NATIVE_BUILD" -name "juceaide" -type f 2>/dev/null | head -1)"
 if [[ -z "$JUCEAIDE_EXE" || ! -x "$JUCEAIDE_EXE" ]]; then
-    echo "ERROR: juceaide binary not found under $NATIVE_BUILD/JUCE"
+    echo "ERROR: juceaide binary not found under $NATIVE_BUILD"
     exit 1
 fi
 echo "  juceaide: $JUCEAIDE_EXE"
 
 # ── Step 2: Cross-compile VREngine for aarch64 ──────────────────────────────
 echo ""
-echo "=== Step 2: Cross-compile VREngine for aarch64 (VRENGINE_HAS_HAILO=$HAILO) ==="
+echo "=== Step 2: Cross-compile VREngine for aarch64 with Hailo ==="
 cmake -S "$AUTODEMOS_DIR" -B "$CROSS_BUILD" \
     -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
     -DJUCE_JUCEAIDE_PATH="$JUCEAIDE_EXE" \
-    -DVRENGINE_HAS_HAILO="$HAILO" \
     -DCMAKE_BUILD_TYPE=Release \
     -G Ninja
 cmake --build "$CROSS_BUILD" --target VREngine

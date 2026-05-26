@@ -47,6 +47,19 @@ constexpr double vadMaxUtteranceSeconds = 2.5;
 constexpr float  vadSpeechThreshold     = 0.50f;
 constexpr auto   hailoVDeviceGroupId    = "SHARED";
 
+static double normaliseInputSampleRate (double sampleRate)
+{
+    return std::isfinite (sampleRate) && sampleRate > 0.0
+               ? sampleRate
+               : static_cast<double> (whisperSampleRate);
+}
+
+static size_t getInputSamplesPerVadFrame (double sampleRate)
+{
+    return static_cast<size_t> (
+        std::max (1.0, std::round (normaliseInputSampleRate (sampleRate) * vadFrameSeconds)));
+}
+
 static std::string findHailoWhisperHef (const juce::String& modelName)
 {
     const auto binary = juce::File::getSpecialLocation (juce::File::currentExecutableFile);
@@ -104,6 +117,9 @@ bool VoiceInputThread::start (TranscriptCallback onTranscript, const juce::Strin
     catch (const std::exception& e)
     {
         juce::Logger::writeToLog (juce::String ("VoiceInputThread: ") + e.what());
+        if (onError)
+            onError ("HEF missing");
+
         return false;
     }
 
@@ -111,6 +127,9 @@ bool VoiceInputThread::start (TranscriptCallback onTranscript, const juce::Strin
     if (result.isNotEmpty())
     {
         juce::Logger::writeToLog ("VoiceInputThread: audio init failed: " + result);
+        if (onError)
+            onError ("audio init failed");
+
         return false;
     }
 
@@ -153,9 +172,19 @@ void VoiceInputThread::stop()
 
 void VoiceInputThread::audioDeviceAboutToStart (juce::AudioIODevice* device)
 {
-    std::lock_guard<std::mutex> lock (mutex);
-    micSampleRate = device != nullptr ? device->getCurrentSampleRate() : whisperSampleRate;
-    micBuffer.clear();
+    double sampleRate = whisperSampleRate;
+
+    {
+        std::lock_guard<std::mutex> lock (mutex);
+        micSampleRate = normaliseInputSampleRate (device != nullptr ? device->getCurrentSampleRate()
+                                                                    : whisperSampleRate);
+        micBuffer.clear();
+        sampleRate = micSampleRate;
+    }
+
+    juce::Logger::writeToLog ("VoiceInputThread: input sample rate "
+                              + juce::String (sampleRate, 1)
+                              + " Hz; resampling to 16000 Hz");
 }
 
 void VoiceInputThread::audioDeviceStopped()
@@ -220,6 +249,9 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
     {
         juce::MessageManager::callAsync ([this, msg = juce::String (e.what())] {
             juce::Logger::writeToLog ("VoiceInputThread: Silero VAD init failed: " + msg);
+            if (onError)
+                onError ("Silero init failed");
+
             running.store (false);
         });
         return;
@@ -244,6 +276,9 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
     {
         juce::MessageManager::callAsync ([this, msg = juce::String (e.what())] {
             juce::Logger::writeToLog ("VoiceInputThread: Hailo init failed: " + msg);
+            if (onError)
+                onError ("Hailo init failed");
+
             running.store (false);
         });
         return;
@@ -269,15 +304,15 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         {
             std::unique_lock<std::mutex> lock (mutex);
             cv.wait (lock, [this] {
-                const auto needed = static_cast<size_t> (micSampleRate * vadFrameSeconds);
+                const auto needed = getInputSamplesPerVadFrame (micSampleRate);
                 return shouldStop.load() || micBuffer.size() >= needed;
             });
 
             if (shouldStop.load())
                 break;
 
-            sampleRate = micSampleRate;
-            const auto needed = static_cast<size_t> (sampleRate * vadFrameSeconds);
+            sampleRate = normaliseInputSampleRate (micSampleRate);
+            const auto needed = getInputSamplesPerVadFrame (sampleRate);
             if (micBuffer.size() < needed)
                 continue;
 
@@ -293,8 +328,8 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         if (pcm16k.empty())
             continue;
 
-        // Pad to Silero window size if resampling gave slightly fewer samples.
-        if (pcm16k.size() < static_cast<size_t> (SileroVad::kWindowSamples))
+        // Silero requires exactly one 512-sample, 16 kHz frame.
+        if (pcm16k.size() != static_cast<size_t> (SileroVad::kWindowSamples))
             pcm16k.resize (static_cast<size_t> (SileroVad::kWindowSamples), 0.0f);
 
         const float prob          = vad->predict (pcm16k.data());
@@ -370,6 +405,9 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
         {
             juce::MessageManager::callAsync ([this, msg = juce::String (e.what())] {
                 juce::Logger::writeToLog ("VoiceInputThread: transcription error: " + msg);
+                if (onError)
+                    onError ("transcription failed");
+
                 running.store (false);
             });
             break;
@@ -392,8 +430,10 @@ std::vector<float> VoiceInputThread::resampleToWhisperRate (const std::vector<fl
     if (std::abs (inputRate - whisperSampleRate) < 1.0)
         return input;
 
+    inputRate = normaliseInputSampleRate (inputRate);
+
     const auto outputSize = static_cast<size_t> (
-        std::max (1.0, std::floor ((static_cast<double> (input.size()) * whisperSampleRate) / inputRate)));
+        std::max (1.0, std::round ((static_cast<double> (input.size()) * whisperSampleRate) / inputRate)));
 
     std::vector<float> output (outputSize);
     const auto ratio = inputRate / static_cast<double> (whisperSampleRate);

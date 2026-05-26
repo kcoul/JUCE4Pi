@@ -1,10 +1,7 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "UserPrefsPane.h"
-
-#if VRENGINE_HAS_HAILO
 #include "VoiceInput_Hailo.h"
-#endif
 
 class MainWindow  : public juce::DocumentWindow
 {
@@ -28,26 +25,24 @@ public:
     struct MainComponent  : public juce::Component
     {
         UserPrefsPane prefsPane;
-
-#if VRENGINE_HAS_HAILO
         std::unique_ptr<VoiceInputThread> voiceThread;
-#endif
 
         explicit MainComponent (const juce::String& modelName)
         {
             addAndMakeVisible (prefsPane);
             setSize (400, 300);
 
-#if VRENGINE_HAS_HAILO
             voiceThread = std::make_unique<VoiceInputThread>();
             voiceThread->onVadStart = [this] (float prob)       { prefsPane.showVadActivity (prob); };
             voiceThread->onVadEnd   = [this] (int utterSamples) { prefsPane.showWhisperStart (utterSamples); };
-            voiceThread->start ([this] (const juce::String& text) {
+            voiceThread->onError    = [this] (const juce::String& message) {
+                prefsPane.showDiagnosticStatus ("VAD: " + message);
+            };
+
+            if (voiceThread->start ([this] (const juce::String& text) {
                 prefsPane.handleVoiceInput (text);
-            }, modelName);
-#else
-            juce::ignoreUnused (modelName);
-#endif
+            }, modelName))
+                prefsPane.showDiagnosticStatus ("VAD: listening");
         }
 
         void resized() override

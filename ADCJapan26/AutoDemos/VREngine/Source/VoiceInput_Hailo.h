@@ -8,7 +8,6 @@
 #include <vector>
 
 // Hailo NPU voice input pipeline: silero VAD + Hailo Speech2Text (Whisper-Tiny.hef).
-// Compiled only when VRENGINE_HAS_HAILO=1.
 class VoiceInputThread final : private juce::AudioIODeviceCallback
 {
 public:
@@ -28,6 +27,7 @@ public:
     // Diagnostic callbacks — invoked on the JUCE message thread.
     std::function<void (float speechProb)>     onVadStart;
     std::function<void (int utteranceSamples)> onVadEnd;
+    std::function<void (const juce::String& message)> onError;
 
 private:
     void audioDeviceAboutToStart (juce::AudioIODevice*) override;
