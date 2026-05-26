@@ -312,6 +312,8 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
             speechActive  = true;
             silenceSamples = 0;
             utterance     = preRoll;
+            juce::Logger::writeToLog ("VAD: speech start  p=" + juce::String (prob, 2));
+            juce::MessageManager::callAsync ([this, p = prob] { if (onVadStart) onVadStart (p); });
         }
         else
         {
@@ -327,6 +329,12 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
 
         if (! reachedMaxDuration && (! hasEnoughSpeech || ! reachedEndSilence))
             continue;
+
+        {
+            const int utterSamples = static_cast<int> (utterance.size());
+            juce::Logger::writeToLog ("VAD: end  " + juce::String (utterSamples / 16) + "ms -> Whisper");
+            juce::MessageManager::callAsync ([this, utterSamples] { if (onVadEnd) onVadEnd (utterSamples); });
+        }
 
         // ── Transcribe ───────────────────────────────────────────────────────
         try
@@ -351,9 +359,12 @@ void VoiceInputThread::workerLoop (TranscriptCallback callback, std::string hefP
 
             juce::String transcript = juce::String (textResult).trim();
             if (transcript.isNotEmpty())
+            {
+                juce::Logger::writeToLog ("Whisper: \"" + transcript + "\"");
                 juce::MessageManager::callAsync ([cb = callback, text = std::move (transcript)] {
                     cb (text);
                 });
+            }
         }
         catch (const std::exception& e)
         {

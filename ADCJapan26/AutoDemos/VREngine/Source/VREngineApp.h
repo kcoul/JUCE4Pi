@@ -40,6 +40,8 @@ public:
 
 #if VRENGINE_HAS_HAILO
             voiceThread = std::make_unique<VoiceInputThread>();
+            voiceThread->onVadStart = [this] (float prob)       { prefsPane.showVadActivity (prob); };
+            voiceThread->onVadEnd   = [this] (int utterSamples) { prefsPane.showWhisperStart (utterSamples); };
             voiceThread->start ([this] (const juce::String& text) {
                 prefsPane.handleVoiceInput (text);
             }, modelName);

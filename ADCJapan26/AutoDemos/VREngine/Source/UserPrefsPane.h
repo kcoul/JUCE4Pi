@@ -25,6 +25,11 @@ public:
         lastCommandLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
         addAndMakeVisible (lastCommandLabel);
 
+        diagLabel.setJustificationType (juce::Justification::centred);
+        diagLabel.setFont (juce::FontOptions (11.0f));
+        diagLabel.setColour (juce::Label::textColourId, juce::Colours::skyblue);
+        addAndMakeVisible (diagLabel);
+
         for (auto& p : profiles)
             addProfile (p);
 
@@ -45,11 +50,26 @@ public:
             btn->setBounds (area.removeFromTop (btnH).reduced (0, 4));
 
         lastCommandLabel.setBounds (area.removeFromTop (24));
+        diagLabel.setBounds (area.removeFromTop (20));
+    }
+
+    void showVadActivity (float prob)
+    {
+        diagLabel.setText ("VAD " + juce::String (juce::roundToInt (prob * 100)) + "% — speech detected",
+                           juce::dontSendNotification);
+    }
+
+    void showWhisperStart (int utterSamples)
+    {
+        const int ms = utterSamples * 1000 / 16000;
+        diagLabel.setText ("STT: " + juce::String (ms) + "ms -> Whisper...",
+                           juce::dontSendNotification);
     }
 
     // Called by VREngine when Whisper produces a transcript.
     void handleVoiceInput (const juce::String& text)
     {
+        diagLabel.setText ({}, juce::dontSendNotification);
         lastCommandLabel.setText ("Heard: \"" + text + "\"", juce::dontSendNotification);
 
         auto lower = text.toLowerCase();
@@ -71,6 +91,7 @@ private:
     juce::OSCSender sender;
     juce::Label titleLabel;
     juce::Label lastCommandLabel;
+    juce::Label diagLabel;
     std::vector<std::unique_ptr<juce::TextButton>> profileButtons;
     int activeIndex = 0;
 

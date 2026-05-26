@@ -25,6 +25,10 @@ public:
     void stop();
     bool isRunning() const noexcept { return running.load(); }
 
+    // Diagnostic callbacks — invoked on the JUCE message thread.
+    std::function<void (float speechProb)>     onVadStart;
+    std::function<void (int utteranceSamples)> onVadEnd;
+
 private:
     void audioDeviceAboutToStart (juce::AudioIODevice*) override;
     void audioDeviceStopped() override;
