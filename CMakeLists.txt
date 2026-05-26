@@ -1,10 +1,29 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.22)
 project(JUCE4Pi VERSION 0.1)
 
-option(BUILD_JUCE_PROTOTYPE_EXAMPLES "Build JUCE prototype examples" OFF)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(ADCJapan26)
+set(JUCE4PI_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${JUCE4PI_CMAKE_DIR}")
 
-if(BUILD_JUCE_PROTOTYPE_EXAMPLES)
-  add_subdirectory(ADC21)
+set(JUCE4PI_JUCE_DIR
+    "${CMAKE_CURRENT_SOURCE_DIR}/libs/JUCE"
+    CACHE PATH "Path to the JUCE source tree")
+
+if(NOT EXISTS "${JUCE4PI_JUCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "JUCE not found at ${JUCE4PI_JUCE_DIR}\n"
+        "Run: git submodule update --init libs/JUCE")
 endif()
+
+if(NOT TARGET juce::juce_core)
+    add_subdirectory("${JUCE4PI_JUCE_DIR}" JUCE)
+endif()
+
+option(BUILD_ADC21 "Build ADC21 targets" OFF)
+if(BUILD_ADC21)
+    add_subdirectory(ADC21)
+endif()
+
+add_subdirectory(ADCJapan26/AutoDemos)

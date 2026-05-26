@@ -38,17 +38,21 @@ else()
         URL      "${_ort_url}"
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
     FetchContent_MakeAvailable(onnxruntime_fetch)
-    # FetchContent does not strip the archive top-level directory.
-    # The .tgz extracts to SOURCE_DIR/onnxruntime-linux-<arch>-<ver>/
-    set(_ort_dir "${onnxruntime_fetch_SOURCE_DIR}/${_ort_pkg}")
-    if(NOT EXISTS "${_ort_dir}")
-        set(_ort_dir "${onnxruntime_fetch_SOURCE_DIR}")
-    endif()
+    # FetchContent may or may not strip the archive top-level directory depending
+    # on CMake version. Search both: SOURCE_DIR/<pkg-name>/ and SOURCE_DIR/ directly.
+    set(_ort_search_dirs
+        "${onnxruntime_fetch_SOURCE_DIR}/${_ort_pkg}"
+        "${onnxruntime_fetch_SOURCE_DIR}")
+    message(STATUS "ONNX Runtime: searching in ${_ort_search_dirs}")
+endif()
+
+if(NOT DEFINED _ort_search_dirs)
+    set(_ort_search_dirs "${_ort_dir}")
 endif()
 
 find_path(_ort_inc
     NAMES onnxruntime_cxx_api.h
-    PATHS "${_ort_dir}"
+    PATHS ${_ort_search_dirs}
     PATH_SUFFIXES
         include/onnxruntime/core/session
         include
@@ -57,7 +61,7 @@ find_path(_ort_inc
 
 find_library(_ort_lib
     NAMES onnxruntime
-    PATHS "${_ort_dir}"
+    PATHS ${_ort_search_dirs}
     PATH_SUFFIXES lib lib64
     NO_DEFAULT_PATH
     REQUIRED)

@@ -34,7 +34,7 @@ if(VRENGINE_HAS_HAILO)
 
     find_package(HailoRT REQUIRED)
 
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/FetchOnnxRuntime.cmake")
+    include(FetchOnnxRuntime)
 
     # libonnxruntime.so ships next to the binary; tell the dynamic linker to look there.
     set_target_properties(VREngine PROPERTIES

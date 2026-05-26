@@ -38,8 +38,6 @@ workspace.xml
 xcuserdata
 /Apps/SerumStandAlone/Builds/MacOSX/RecentFilesMenuTemplate.nib
 
-#in-source JUCE copy
-**/JUCE/
 
 # ADCJapan26 slides
 # *.potx — branded QNX templates, always private, never remove this line

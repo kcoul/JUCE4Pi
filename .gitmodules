@@ -5,3 +5,7 @@
 [submodule "ADCJapan26/GENISYS"]
 	path = ADCJapan26/GENISYS
 	url = https://github.com/kcoul/GENISYS.git
+[submodule "libs/JUCE"]
+	path = libs/JUCE
+	url = https://github.com/kcoul/JUCE.git
+	branch = qnx-ports

@@ -19,11 +19,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 AUTODEMOS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"   # AutoDemos/ is the CMake source root
+JUCE4PI_DIR="$(cd "$AUTODEMOS_DIR/../.." && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 NATIVE_BUILD="$BUILD_DIR/native"
 CROSS_BUILD="$BUILD_DIR/aarch64-linux"
 DIST_DIR="$BUILD_DIR/dist"
-TOOLCHAIN="$AUTODEMOS_DIR/cmake/toolchain-aarch64-linux.cmake"
+TOOLCHAIN="$JUCE4PI_DIR/cmake/toolchain-aarch64-linux.cmake"
 
 HAILO=ON
 if [[ "${1:-}" == "--no-hailo" ]]; then
