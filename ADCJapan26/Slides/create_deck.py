@@ -739,7 +739,7 @@ def add_s04_journey(prs):
         if head:
             ln = c.line._ln
             if ln is not None:
-                he = _etree.SubElement(ln, _qn("a:headEnd"))
+                he = _etree.SubElement(ln, _qn("a:tailEnd"))
                 he.set("type", "arrow")
                 he.set("w", "sm")
                 he.set("len", "sm")
@@ -750,9 +750,9 @@ def add_s04_journey(prs):
     for cx in prod_cxs:
         _seg(cx, BRANCH_Y, cx, PROD_Y, head=True)
 
-    add_label(slide, center_x - 1.8, BRANCH_Y - 0.22, 3.6, 0.20,
-              "Section 6: From R&D to Production",
-              RED, font_size=7.5, bold=True, align=PP_ALIGN.CENTER)
+    add_label(slide, center_x - 4.0, BRANCH_Y - 0.22, 3.6, 0.20,
+              "From R&D to Production",
+              RED, font_size=7.5, bold=True, align=PP_ALIGN.RIGHT)
 
     return slide
 
@@ -767,14 +767,14 @@ def add_s06_recap_adc21(prs):
         title="Recap",
         center_label="ADC'21",
         quadrants=[
-            ("Audience",
-             "Beginner-friendly — no embedded or cross-compilation experience required"),
-            ("Hardware",
-             "Raspberry Pi 4 · Raspberry Pi OS · JUCE apps and plugins compiled on-device"),
-            ("The Trick",
-             "Mount the RPi filesystem over SSH — skip cross-compilation entirely"),
-            ("The Lesson",
-             "Get something running first. Optimise the dev workflow when you actually need to"),
+            ("IDE on Target",
+             "For small early projects, mount the RPi filesystem over SSH and compile directly on-device — no cross-compilation needed"),
+            ("GPIO & pigpio",
+             "Hands-on GPIO examples: reading a potentiometer in C with the pigpio library"),
+            ("C / C++ Interop",
+             "Mapping C++ member functions to C function pointers via a Callback<> template — required to pass class methods into C APIs like pigpio"),
+            ("Start Small",
+             "Many small programs beats one ambitious project when learning embedded basics"),
         ],
     )
 
@@ -811,10 +811,8 @@ def add_s09_qnx_everywhere(prs):
         [
             "Elk Audio OS already runs headless JUCE on a real-time OS — "
             "that part is solved",
-            "Our contribution: full graphics support — "
-            "JUCE with its complete UI running on QNX",
-            "SurgeXT with its full interface on a Raspberry Pi 5 running QNX "
-            "is the proof",
+            "JUCE with its full module set now runs on QNX",
+            "SurgeXT on Pi 4/5 running QNX — a great completeness test",
             "The port is the foundation — everything else in this talk builds on it",
         ],
     )
@@ -824,6 +822,11 @@ def add_s09_qnx_everywhere(prs):
     if os.path.exists(logo):
         add_svg_image(slide, logo, left_in=0.68, top_in=6.60, width_in=2.70, height_in=0.52,
                       fill_subs={b'fill="black"': b'fill="white"'})
+
+    surge_img = os.path.join(SLIDES_DIR, "surge_dark.png")
+    if os.path.exists(surge_img):
+        slide.shapes.add_picture(surge_img, Inches(7.3), Inches(3.0), width=Inches(5.7))
+
     return slide
 
 
