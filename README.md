@@ -3,47 +3,11 @@ Resources for JUCE-based audio development on the Raspberry Pi
 
 ## Setup
 
-This repository is intended to work as a template for reducing the complexity around embedded
-audio development. It uses submodules for both active development repos and dormant third-party
-dependencies:
+This repository is intended to work as a starting point for reducing the complexity around embedded
+audio development. For QNX development, Windows or Linux can work equally well as a Host OS.
+For Raspberry Pi OS or Ubuntu development, native Linux or WSL2 as a Host OS is required.
 
-- Active submodules are repos you are likely to edit directly. In this tree, the helper scripts
-  classify submodules under the same GitHub owner as the root repo as active.
-- Dormant submodules are vendor or third-party repos that should usually stay pinned to the
-  exact commit selected by the parent repo.
-
-After cloning, initialize submodules, then run the dry-run classifier:
-
-```console
-git submodule update --init --recursive
-./scripts/manage-active-submodules.sh
-```
-
-On Windows:
-
-```console
-git submodule update --init --recursive
-pwsh -NoProfile -File .\scripts\manage-active-submodules.ps1
-```
-
-The dry run prints a table showing which submodules are considered active or dormant. To apply the
-active-submodule setup, run:
-
-```console
-./scripts/manage-active-submodules.sh --apply
-```
-
-On Windows:
-
-```console
-pwsh -NoProfile -File .\scripts\manage-active-submodules.ps1 -Apply
-```
-
-Apply mode attaches active submodules to a real branch when possible and installs a pre-commit guard
-that refuses commits from detached HEAD. This keeps day-to-day work on forked or owned submodules
-branch-based, while leaving ordinary third-party dependencies pinned.
-
-## QNX
+## QNX (Setup Instructions coming)
 
 ## Raspberry Pi OS / Ubuntu 
 ```console
