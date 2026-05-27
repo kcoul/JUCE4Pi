@@ -25,9 +25,9 @@ target_link_libraries(VREngine
         juce::juce_recommended_config_flags
         juce::juce_recommended_warning_flags)
 
-target_sources(VREngine PRIVATE Source/VoiceInput_Hailo.cpp)
-
 find_package(HailoRT REQUIRED)
+
+target_sources(VREngine PRIVATE Source/VoiceInput_Hailo.cpp)
 
 include(FetchOnnxRuntime)
 
