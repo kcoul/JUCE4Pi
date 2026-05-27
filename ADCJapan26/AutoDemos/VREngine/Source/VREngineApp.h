@@ -36,7 +36,7 @@ public:
             voiceThread->onVadStart = [this] (float prob)       { prefsPane.showVadActivity (prob); };
             voiceThread->onVadEnd   = [this] (int utterSamples) { prefsPane.showWhisperStart (utterSamples); };
             voiceThread->onError    = [this] (const juce::String& message) {
-                prefsPane.showDiagnosticStatus ("VAD: " + message);
+                prefsPane.showDiagnosticStatus (message);
             };
 
             if (voiceThread->start ([this] (const juce::String& text) {

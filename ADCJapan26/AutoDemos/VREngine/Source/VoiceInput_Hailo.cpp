@@ -118,7 +118,7 @@ bool VoiceInputThread::start (TranscriptCallback onTranscript, const juce::Strin
     {
         juce::Logger::writeToLog (juce::String ("VoiceInputThread: ") + e.what());
         if (onError)
-            onError ("HEF missing");
+            onError ("Whisper HEF not found");
 
         return false;
     }
