@@ -615,6 +615,10 @@ def add_s01_title(prs):
     set_ph(slide, 0,  "TX/RX Part 2:\nAI Audio on the Raspberry Pi")
     set_ph(slide, 1,  "Audio Developer Conference Japan 2026")
     set_ph(slide, 10, "Kieran Coulter | Principal Systems Software Developer - Audio")
+    add_label(slide, 0.68, 7.08, 6.0, 0.26,
+              "github.com/kcoul/JUCE4Pi",
+              GRAY1, font_size=8, align=PP_ALIGN.LEFT,
+              url="https://github.com/kcoul/JUCE4Pi")
     return slide
 
 
@@ -830,12 +834,76 @@ def add_s09_qnx_everywhere(prs):
     return slide
 
 
-def add_s10_it_works(prs):
-    """S2.2 — Video: SurgeXT running on QNX. No title; auto-plays fullscreen."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
+def add_s10_build_targets(prs):
+    """S2.2 — Build target ecosystem: QNX/Pi4, Ubuntu/Pi5, Host."""
+    import lxml.etree as _etree
+    from pptx.oxml.ns import qn as _qn
+
+    lyt   = get_layout(prs, 1, "Only Title")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "What We're Building")
+
+    TOP       = 1.35
+    HDR_H     = 0.52
+    NH        = 0.50
+    GAP       = 0.14
+    NODES_TOP = TOP + HDR_H + 0.22
+
+    C1_X, C1_W = 0.35, 2.30   # QNX / Pi 4
+    C2_X, C2_W = 3.45, 5.60   # Ubuntu / Pi 5
+    C3_X, C3_W = 9.50, 3.48   # Host
+
+    # ── Platform headers ──────────────────────────────────────────────────
+    add_node(slide, C1_X, TOP, C1_W, HDR_H, ["QNX · Pi 4"],    RED,   font_size=11)
+    add_node(slide, C2_X, TOP, C2_W, HDR_H, ["Ubuntu · Pi 5"], GRAY3, font_size=11)
+    add_node(slide, C3_X, TOP, C3_W, HDR_H, ["Host"],          GRAY3, font_size=11)
+
+    # ── QNX: SurgeXT only ────────────────────────────────────────────────
+    add_node(slide, C1_X, NODES_TOP, C1_W, NH,
+             ["SurgeXT"], DARK1, text_color=RED, font_size=10.5)
+    add_label(slide, C1_X, NODES_TOP + NH + 0.07, C1_W, 0.20,
+              "frame rate comparison  →",
+              GRAY1, font_size=7.0, align=PP_ALIGN.CENTER)
+
+    # ── Ubuntu / Pi 5 targets ─────────────────────────────────────────────
+    u_y = NODES_TOP
+    for name, color in [
+        ("SurgeXT",              RED),
+        ("SurgeMIDIToOscBridge", GRAY1),
+        ("DataBridge",           RED),
+        ("VREngine",             RED),
+        ("GENISYS",              PURPLE),
+    ]:
+        add_node(slide, C2_X, u_y, C2_W, NH, [name], DARK1, text_color=color, font_size=10.5)
+        u_y += NH + GAP
+
+    # ── Host: bridge native ───────────────────────────────────────────────
+    add_node(slide, C3_X, NODES_TOP, C3_W, NH,
+             ["SurgeXT"], DARK1, text_color=RED, font_size=10.5)
+    host_y = NODES_TOP + NH + GAP
+    add_node(slide, C3_X, host_y, C3_W, NH,
+             ["SurgeMIDIToOscBridge"], DARK1, text_color=GRAY1, font_size=10.5)
+    add_label(slide, C3_X, host_y + NH + 0.07, C3_W, 0.20,
+              "native · Hailo NPU available",
+              GRAY1, font_size=7.5, align=PP_ALIGN.CENTER)
+
+    # ── Connector: QNX SurgeXT → Ubuntu SurgeXT (frame rate comparison) ──
+    arrow_y = NODES_TOP + NH / 2
+    conn = slide.shapes.add_connector(
+        MSO_CONNECTOR_TYPE.STRAIGHT,
+        Inches(C1_X + C1_W), Inches(arrow_y),
+        Inches(C2_X),        Inches(arrow_y),
     )
+    conn.line.color.rgb = GRAY1
+    conn.line.width = Pt(1.0)
+    ln = conn.line._ln
+    if ln is not None:
+        te = _etree.SubElement(ln, _qn("a:tailEnd"))
+        te.set("type", "arrow")
+        te.set("w", "sm")
+        te.set("len", "sm")
+
+    return slide
 
 
 def add_s11_juce_porting_lessons(prs):
@@ -980,8 +1048,8 @@ def add_s13_tracktion_engine(prs):
     set_content_ph(slide, 1,
         "Timeline-based audio engine running on target useful for eval",
         [
-            "“Why You Shouldn’t Write a DAW” — "
-            "David Rowland, ADC23 — exactly how we’re thinking about this",
+            "\"Why You Shouldn't Write a DAW\" — "
+            "David Rowland, ADC23 — exactly how we're thinking about this",
             "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
             "to automotive data buses than MIDI ever was",
             "OSC is then a placeholder for real automotive data streams like VIN",
@@ -1035,9 +1103,9 @@ def add_s15_npu_pros_cons(prs):
     p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
     run.text = (
-        "“NPUs shine with low-latency, single-inference tasks — think real-time audio cleanup "
+        "\"NPUs shine with low-latency, single-inference tasks — think real-time audio cleanup "
         "or live transcription during video calls. One client in the film industry reduced "
-        "their audio processing time by over 70%…”"
+        "their audio processing time by over 70%…\""
     )
     run.font.name   = "Onest"
     run.font.size   = Pt(13)
@@ -1070,8 +1138,8 @@ def add_s15_npu_pros_cons(prs):
     p = tf.paragraphs[0]
     p.alignment = PP_ALIGN.LEFT
     run = p.add_run()
-    run.text   = "“memory bandwidth matters more than raw compute " \
-                 "for many NPU workloads”"
+    run.text   = "\"memory bandwidth matters more than raw compute " \
+                 "for many NPU workloads\""
     run.font.name   = "Onest"
     run.font.size   = Pt(13)
     run.font.italic = True
@@ -1178,16 +1246,32 @@ def add_s16_hailo_hardware(prs):
 
 
 def add_s17_qnx_hailo_status(prs):
-    """S3.3 — Why QNX isn't in the Hailo bring-up story: 10H not yet supported."""
-    lyt   = get_layout(prs, 1, "One Content")
+    """S3.3 — QNX + Hailo status; benchmark comparison vs PREEMPT_RT Linux."""
+    lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0, "QNX NPU Status")
-    set_content_ph(slide, 1,
-        "QNX supports Hailo-8 and Hailo-8L today",
-        [
-            "Hailo-10H support coming in future package",
-        ],
-    )
+
+    BX, BW = 0.68, 12.30
+    add_label(slide, BX, 1.35, BW, 0.38,
+              "• QNX supports Hailo-8 and Hailo-8L today — Hailo-10H support coming in future package",
+              WHITE, font_size=13, align=PP_ALIGN.LEFT)
+    add_label(slide, BX, 1.85, BW, 0.38,
+              "• Comparison of workloads on 1st-gen Hailo NPUs promising on QNX vs PREEMPT_RT Linux [1]",
+              WHITE, font_size=13, align=PP_ALIGN.LEFT)
+
+    IMG_Y, IMG_W = 2.50, 5.95
+    img1 = os.path.join(SLIDES_DIR, "QNX_vs_RTLINUX1_FPS.png")
+    img2 = os.path.join(SLIDES_DIR, "QNX_vs_RTLINUX2_Latency.png")
+    if os.path.exists(img1):
+        slide.shapes.add_picture(img1, Inches(0.40), Inches(IMG_Y), width=Inches(IMG_W))
+    if os.path.exists(img2):
+        slide.shapes.add_picture(img2, Inches(6.98), Inches(IMG_Y), width=Inches(IMG_W))
+
+    add_label(slide, 0.40, 7.08, 12.60, 0.26,
+              "[1] PhyAI Foundation — QNX vs PREEMPT_RT Linux MobileNetv1 Benchmark  (click to open)",
+              GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
+              url="Whitepaper_PhyAI_Foundaation_QNX_MobileNetv1.pdf")
+
     return slide
 
 
@@ -1229,7 +1313,7 @@ def add_s20_whispercpp_testbench(prs):
     set_content_ph(slide, 1,
         "Role 1: MIDI → OSC",
         [
-            "MIDI has no role in automotive — QNX doesn’t support it",
+            "MIDI has no role in automotive — QNX doesn't support it",
             "Bridge translates controller MIDI input to OSC messages",
             "SurgeXT already speaks OSC natively — no synth changes needed",
             "Solves the QNX MIDI gap without touching the target",
@@ -1247,16 +1331,7 @@ def add_s20_whispercpp_testbench(prs):
     return slide
 
 
-def add_s21_testbench_video(prs):
-    """S4.2 — Video: Bridge running on host CPU (shoot late, wait for polished GUI)."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "placeholder.mp4"),
-        title="Bridge Running on Host CPU",
-    )
-
-
-def add_s22_midi_osc_features(prs):
+def add_s21_midi_osc_features(prs):
     """S4.3 — MIDI mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1282,7 +1357,7 @@ def add_s22_midi_osc_features(prs):
     return slide
 
 
-def add_s23_voice_api_features(prs):
+def add_s22_voice_api_features(prs):
     """S4.4 — Voice API mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1308,11 +1383,11 @@ def add_s23_voice_api_features(prs):
     return slide
 
 
-def add_s24_divider_s5(prs):
+def add_s23_divider_s5(prs):
     return add_divider(prs, 5, "Getting to the Target")
 
 
-def add_s25_midi_osc_bridge(prs):
+def add_s24_midi_osc_bridge(prs):
     """
     S5.1 — The Bridge as the vehicle that 'got to the target'.
     Host-side NPU access + 3 identical chips = incremental dev without
@@ -1349,7 +1424,7 @@ def add_s25_midi_osc_bridge(prs):
     return slide
 
 
-def add_s26_host_target_support_matrix(prs):
+def add_s25_host_target_support_matrix(prs):
     """
     S5.2 — Adapted from QNX Slide Library slide 41: four process steps.
     Shows the practical path for host-first development across Linux and QNX.
@@ -1400,7 +1475,40 @@ def add_s26_host_target_support_matrix(prs):
     return slide
 
 
-def add_s27_signal_chain(prs):
+def _add_voice_bypass(slide, node_x, Y_NODE, NH):
+    """Bent connector: Prog+Bank (node 2) → below MIDI>OSC → bottom of SurgeXT (node 4)."""
+    import lxml.etree as _etree
+    from pptx.oxml.ns import qn as _qn
+
+    Y_BELOW = Y_NODE + NH + 0.32
+    x_from  = node_x[2] + 1.65        # right edge of node 2 (NW=1.65)
+    x_stub  = x_from + 0.18
+    x_to    = node_x[4] + 1.65 / 2    # centre of node 4 (SurgeXT)
+    y_mid   = Y_NODE + NH / 2
+
+    def _seg(x1, y1, x2, y2, arrowhead=False):
+        c = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            Inches(x1), Inches(y1), Inches(x2), Inches(y2),
+        )
+        c.line.color.rgb = GRAY1
+        c.line.width = Pt(1.5)
+        if arrowhead:
+            ln = c.line._ln
+            if ln is not None:
+                te = _etree.SubElement(ln, _qn("a:tailEnd"))
+                te.set("type", "arrow")
+                te.set("w", "med")
+                te.set("len", "med")
+        return c
+
+    _seg(x_from, y_mid,   x_stub, y_mid)
+    _seg(x_stub, y_mid,   x_stub, Y_BELOW)
+    _seg(x_stub, Y_BELOW, x_to,   Y_BELOW)
+    _seg(x_to,   Y_BELOW, x_to,   Y_NODE + NH, arrowhead=True)
+
+
+def add_s26_signal_chain(prs):
     """
     S5.3 — Full system signal chain: HOST nodes left, TARGET nodes right,
     separated by a purple boundary line.
@@ -1427,16 +1535,20 @@ def add_s27_signal_chain(prs):
         (["Whisper",  "Hailo NPU"],      RED),
         (["Prog +",   "Bank Change"],    GRAY3),
         (["MIDI > OSC", "Bridge"],       GRAY3),
-        (["SurgeXT",  "on QNX"],         RED2),
+        (["SurgeXT"],                    RED2),
         (["Audio",    "Output"],         GRAY3),
     ]
     for i, (lines, fill) in enumerate(spec):
         add_node(slide, node_x[i], Y_NODE, NW, NH, lines, fill)
 
-    for x in arrow_x:
+    for i, x in enumerate(arrow_x):
+        if i == 2:
+            continue  # voice path bypasses node 4 via bent connector
         add_arrow(slide, x, Y_ARR, AW, AH, GRAY1)
 
-    x_boundary = node_x[2] + NW + GAP / 2
+    _add_voice_bypass(slide, node_x, Y_NODE, NH)
+
+    x_boundary = node_x[3] + NW + GAP / 2
     add_vline(slide, x_boundary, Y_NODE - 0.52, Y_NODE + NH + 0.52, PURPLE)
 
     host_w = x_boundary - X0
@@ -1449,16 +1561,7 @@ def add_s27_signal_chain(prs):
     return slide
 
 
-def add_s28_cpu_npu_speedup_video(prs):
-    """S5.4 — Video: CPU vs NPU speed comparison."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip3_npu_speedup.mp4"),
-        title="CPU → NPU: The Speed Difference",
-    )
-
-
-def add_s29_signal_chain_full_target(prs):
+def add_s27_signal_chain_full_target(prs):
     """
     S5.5 — Same six nodes as s23, but ALL running on the target.
     No HOST/TARGET split — the boundary line is gone.
@@ -1485,14 +1588,18 @@ def add_s29_signal_chain_full_target(prs):
         (["Whisper",    "Hailo NPU"],    RED),
         (["Prog +",     "Bank Change"],  GRAY3),
         (["MIDI > OSC", "Bridge"],       GRAY3),
-        (["SurgeXT",    "on QNX"],       RED2),
+        (["SurgeXT"],                    RED2),
         (["Audio",      "Output"],       GRAY3),
     ]
     for i, (lines, fill) in enumerate(spec):
         add_node(slide, node_x[i], Y_NODE, NW, NH, lines, fill)
 
-    for x in arrow_x:
+    for i, x in enumerate(arrow_x):
+        if i == 2:
+            continue  # voice path bypasses node 4 via bent connector
         add_arrow(slide, x, Y_ARR, AW, AH, GRAY1)
+
+    _add_voice_bypass(slide, node_x, Y_NODE, NH)
 
     add_label(slide, X0, Y_NODE - 0.52, total_w, 0.30,
               "TARGET  (QNX / RPi5)", GRAY1, font_size=8, bold=True)
@@ -1513,7 +1620,7 @@ def add_sXX_punchline(prs):
     return slide
 
 
-def add_s38_full_demo_video(prs):
+def add_s33_full_demo_video(prs):
     """Post-punchline full demo video."""
     return add_video_slide(
         prs,
@@ -1529,11 +1636,10 @@ def add_s02_dedication(prs):
     """
     lyt   = get_layout(prs, 1, "Statement")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Dedicated to")
+    set_ph(slide, 0, "Dedicated to Jason Dasent")
     set_ph(slide, 12, (
-        "Jason Dasent — music producer and accessibility consultant —\n"
-        "saw ADC21 and asked: can a Raspberry Pi and voice commands\n"
-        "help blind people work in a professional studio?\n"
+        "Jason Dasent attended ADC21 and asked: can a Raspberry Pi\n"
+        "issue voice commands in the studio?\n"
         "\n"
         "It took five years. This project is the beginning of that answer.\n"
         "\n"
@@ -1545,10 +1651,19 @@ def add_s02_dedication(prs):
         GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
         url="https://www.jasondasent.com/",
     )
+    photo = os.path.join(SLIDES_DIR, "JasonDasent.jpg")
+    if os.path.exists(photo):
+        w_px, h_px = _image_dims(photo)
+        img_w = Inches(3.20)
+        img_h = int(img_w * h_px / w_px) if w_px else Inches(3.20)
+        slide.shapes.add_picture(photo,
+            Inches(0.68),
+            Inches(6.58) - img_h,
+            img_w, img_h)
     return slide
 
 
-def add_s37_contact(prs):
+def add_s32_contact(prs):
     """Final slide — Contact card layout."""
     lyt   = get_layout(prs, 1, "Contact")
     slide = prs.slides.add_slide(lyt)
@@ -1628,46 +1743,38 @@ def add_s37_contact(prs):
 
 # ── Section 6 slides s29 – s35 ────────────────────────────────────────────────
 
-def add_s30_divider_s6(prs):
+def add_s28_divider_s6(prs):
     return add_divider(prs, 6, "From R&D to Production")
 
 
-def add_s31_databridge_demo(prs):
-    """S6.1 — DataBridge: MIDI-to-OSC data conversion in a production DAW context."""
+def add_s29_databridge_demo(prs):
+    """S6.1 — DataBridge: a learning exercise and workaround for QNX's no-MIDI constraint."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "DataBridge: MIDI Gap, Solved")
+    set_ph(slide, 0, "DataBridge: Exercise in Adapting Protocols")
     set_content_ph(slide, 1,
-        "What it demonstrates",
+        "The problem",
         [
-            "MIDI has no role in automotive — data conversion is fundamental",
-            "DataBridge VST3 plugin loads in REAPER; no standalone app needed",
-            "MIDI CC data becomes SurgeXT OSC parameter updates in real time",
-            "Target host is a single text field — flip from dev to RPi5 instantly",
+            "QNX has no MIDI stack — OSC is a closer fit on automotive",
+            "Automotive protocol adapters are routine (CAN, AWE, RCS/ACS)",
+            "Needed a way to feed live control data to SurgeXT on target",
+            "Building a MIDI→OSC bridge was a practical exercise",
         ],
     )
     set_content_ph(slide, 2,
-        "The AVAS/ESE demo",
+        "What it is (and isn't)",
         [
-            "CC 1 (mod wheel) → Speed / RPM → /param/a/osc/1/pitch",
-            "CC 11 (expression) → Throttle → /param/a/filter/1/cutoff",
-            "Notes C3–A3 → Gear 1–6 → /param/a/osc/1/octave",
-            "SurgeXT ESE_Normal patch responds live to every control move",
+            "VST3 plugin: translates MIDI CC into OSC messages",
+            "Convenient for testing AVAS/ESE DSP using MIDI via DAW",
+            "Not a production tool — utility that taught OSC and the protocol layer",
+            "Understand generalization of message protocol adapters",
         ],
     )
     return slide
 
 
-def add_s32_databridge_video(prs):
-    """S6.2 — DataBridge live demo video."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip_databridge_demo.mp4"),
-        title="DataBridge: Live AVAS/ESE Parameter Control",
-    )
 
-
-def add_s33_vrengine_demo(prs):
+def add_s30_vrengine_demo(prs):
     """S6.3 — VREngine: voice-controlled UserPrefsPane on target."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1677,64 +1784,40 @@ def add_s33_vrengine_demo(prs):
         [
             "Always-on voice recognition at automotive latency budgets",
             "Whisper on Hailo NPU: ~300 ms vs ~3 s on CPU",
-            "QNX Screen Framework: graphics and NPU on the same target",
-            "Keyword match routes speech directly to SurgeXT patch loads",
+            "Mock of tiny part of automotive head unit dashboard",
+            "Keyword match routes commands to SurgeXT patch loads",
         ],
     )
     set_content_ph(slide, 2,
         "The sound profile demo",
         [
-            "Say “normal” → SurgeXT loads ESE_Normal patch",
-            "Say “sonic boom” → SurgeXT loads SonicBoom patch",
-            "Manual toggle buttons as fallback — same OSC path either way",
-            "Runs on host for dev; cross-compiles to RPi5/QNX unchanged",
+            'Say "ice" → SurgeXT loads ICE patch',
+            'Say "modern" → SurgeXT loads Modern patch',
+            "Manual toggle buttons for user touchscreen — same OSC route regardless",
+            "Runs on host for dev; cross-compiles to RPi5/QNX",
         ],
     )
     return slide
 
 
-def add_s34_vrengine_video(prs):
-    """S6.4 — VREngine live demo video."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip_vrengine_demo.mp4"),
-        title="VREngine: Voice-Switched Sound Profiles",
-    )
 
-
-def add_s35_genisys_demo(prs):
+def add_s31_genisys_demo(prs):
     """S6.5 — GENISYS: both features unified in Jason Dasent's vision."""
-    lyt   = get_layout(prs, 1, "Two Contents")
+    lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "GENISYS: The Studio as a System")
+    set_ph(slide, 0, "GENISYS: Talk to Your Entire Studio")
     set_content_ph(slide, 1,
-        "Jason Dasent's vision, now building",
+        "Jason's dream is finally possible in 2026",
         [
             "A Raspberry Pi that knows your entire studio",
             "Any input (MIDI, voice, UI) routed to any destination",
             "Studio Builder wizard defines your room once",
-            "DataBridge and VREngine become modalities — not separate tools",
-        ],
-    )
-    set_content_ph(slide, 2,
-        "The demo",
-        [
-            "Studio Builder: 2 MIDI controllers + SurgeXT + REAPER",
-            "MIDI CC automation and voice profile switching in one session",
-            "Front end on host, back end on target — TX/RX full circle",
-            "FOSS — the community is invited to build on this foundation",
+            "Down the line: Intent -> Parameter Space — tweak your tracks by describing what you want",
         ],
     )
     return slide
 
 
-def add_s36_genisys_video(prs):
-    """S6.6 — GENISYS live demo video."""
-    return add_video_slide(
-        prs,
-        video_path=os.path.join(SLIDES_DIR, "clip_genisys_demo.mp4"),
-        title="GENISYS: Studio Builder + AVAS/ESE + Voice Control",
-    )
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -1751,7 +1834,7 @@ def main():
     add_s07_recap_adcx23(prs)
     add_s08_divider_s2(prs)
     add_s09_qnx_everywhere(prs)
-    add_s10_it_works(prs)
+    add_s10_build_targets(prs)
     add_s11_juce_porting_lessons(prs)
     add_s12_screen_framework(prs)
     add_s13_tracktion_engine(prs)
@@ -1762,23 +1845,18 @@ def main():
     add_s18_npu_speed_result(prs)
     add_s19_divider_s4(prs)
     add_s20_whispercpp_testbench(prs)
-    add_s21_testbench_video(prs)
-    add_s22_midi_osc_features(prs)
-    add_s23_voice_api_features(prs)
-    add_s24_divider_s5(prs)
-    add_s25_midi_osc_bridge(prs)
-    add_s26_host_target_support_matrix(prs)
-    add_s27_signal_chain(prs)
-    add_s28_cpu_npu_speedup_video(prs)
-    add_s29_signal_chain_full_target(prs)
-    add_s30_divider_s6(prs)
-    add_s31_databridge_demo(prs)
-    add_s32_databridge_video(prs)
-    add_s33_vrengine_demo(prs)
-    add_s34_vrengine_video(prs)
-    add_s35_genisys_demo(prs)
-    add_s36_genisys_video(prs)
-    add_s37_contact(prs)
+    add_s21_midi_osc_features(prs)
+    add_s22_voice_api_features(prs)
+    add_s23_divider_s5(prs)
+    add_s24_midi_osc_bridge(prs)
+    add_s25_host_target_support_matrix(prs)
+    add_s26_signal_chain(prs)
+    add_s27_signal_chain_full_target(prs)
+    add_s28_divider_s6(prs)
+    add_s29_databridge_demo(prs)
+    add_s30_vrengine_demo(prs)
+    add_s31_genisys_demo(prs)
+    add_s32_contact(prs)
 
     prs.save(OUTPUT)
     print(f"Saved {len(prs.slides)} slides: {OUTPUT}")
