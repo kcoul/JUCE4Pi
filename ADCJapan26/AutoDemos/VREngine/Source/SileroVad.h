@@ -4,6 +4,7 @@
 // Returns speech probability [0, 1]; call reset() between utterances.
 #include <onnxruntime_cxx_api.h>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -14,7 +15,7 @@ public:
 
     explicit SileroVad (const std::string& modelPath)
         : env_     (ORT_LOGGING_LEVEL_WARNING, "SileroVad"),
-          session_ (env_, modelPath.c_str(), Ort::SessionOptions{})
+          session_ (env_, std::filesystem::path (modelPath).c_str(), Ort::SessionOptions{})
     {
         state_.assign (2 * 1 * 128, 0.0f);
     }
