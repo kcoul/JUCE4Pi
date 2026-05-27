@@ -2,15 +2,15 @@
 # Downloads the official ONNX Runtime prebuilt package for the target platform
 # and creates an IMPORTED target onnxruntime::onnxruntime.
 #
-# For Linux aarch64 this downloads the shared lib release from:
-#   https://github.com/microsoft/onnxruntime/releases
+# Supports Linux (aarch64, x64) and Windows (x64, arm64).
 #
 # Override the auto-download by setting ONNXRUNTIME_LIB_DIR before including:
-#   cmake ... -DONNXRUNTIME_LIB_DIR=/path/to/onnxruntime-linux-aarch64-1.26.0
+#   cmake ... -DONNXRUNTIME_LIB_DIR=/path/to/onnxruntime-<platform>-<arch>-1.26.0
 #
 # Expected layout inside ONNXRUNTIME_LIB_DIR:
-#   include/onnxruntime_cxx_api.h  (flat — no onnxruntime/core/session/ nesting)
-#   lib/libonnxruntime.so  (or libonnxruntime.so.1.x.x)
+#   include/onnxruntime_cxx_api.h  (or include/onnxruntime/core/session/)
+#   lib/libonnxruntime.so          (Linux)
+#   lib/onnxruntime.dll + onnxruntime.lib  (Windows)
 
 if(TARGET onnxruntime::onnxruntime)
     return()
@@ -22,15 +22,26 @@ if(DEFINED ONNXRUNTIME_LIB_DIR)
     set(_ort_dir "${ONNXRUNTIME_LIB_DIR}")
     message(STATUS "ONNX Runtime: using manual install at ${_ort_dir}")
 else()
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-        set(_ort_arch "aarch64")
+    if(WIN32)
+        # Windows ARM64 packages use "arm64", not "aarch64"
+        if(CMAKE_GENERATOR_PLATFORM MATCHES "ARM64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
+            set(_ort_arch "arm64")
+        else()
+            set(_ort_arch "x64")
+        endif()
+        set(_ort_pkg "onnxruntime-win-${_ort_arch}-${ONNXRUNTIME_VERSION}")
+        set(_ort_url
+            "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/${_ort_pkg}.zip")
     else()
-        set(_ort_arch "x64")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+            set(_ort_arch "aarch64")
+        else()
+            set(_ort_arch "x64")
+        endif()
+        set(_ort_pkg "onnxruntime-linux-${_ort_arch}-${ONNXRUNTIME_VERSION}")
+        set(_ort_url
+            "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/${_ort_pkg}.tgz")
     endif()
-
-    set(_ort_pkg "onnxruntime-linux-${_ort_arch}-${ONNXRUNTIME_VERSION}")
-    set(_ort_url
-        "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/${_ort_pkg}.tgz")
 
     message(STATUS "ONNX Runtime: fetching ${_ort_pkg}")
     include(FetchContent)
@@ -68,15 +79,30 @@ find_library(_ort_lib
     NO_CMAKE_FIND_ROOT_PATH
     REQUIRED)
 
-# Expose the .so directory so callers can copy it next to the binary.
-get_filename_component(ONNXRUNTIME_LIB_RUNTIME_DIR "${_ort_lib}" DIRECTORY)
-set(ONNXRUNTIME_SHARED_LIBS "" CACHE INTERNAL "")
-file(GLOB _ort_sofiles "${ONNXRUNTIME_LIB_RUNTIME_DIR}/libonnxruntime*.so*")
-set(ONNXRUNTIME_SHARED_LIBS "${_ort_sofiles}" CACHE INTERNAL "ONNX Runtime shared libs to deploy")
+get_filename_component(_ort_lib_dir "${_ort_lib}" DIRECTORY)
 
 add_library(onnxruntime::onnxruntime SHARED IMPORTED GLOBAL)
-set_target_properties(onnxruntime::onnxruntime PROPERTIES
-    IMPORTED_LOCATION             "${_ort_lib}"
-    INTERFACE_INCLUDE_DIRECTORIES "${_ort_inc}")
 
-message(STATUS "ONNX Runtime: ${_ort_lib}")
+if(WIN32)
+    # _ort_lib is the import lib (.lib); IMPORTED_LOCATION must point to the .dll
+    find_file(_ort_dll
+        NAMES onnxruntime.dll
+        PATHS "${_ort_lib_dir}"
+        NO_DEFAULT_PATH
+        NO_CMAKE_FIND_ROOT_PATH
+        REQUIRED)
+    set_target_properties(onnxruntime::onnxruntime PROPERTIES
+        IMPORTED_LOCATION             "${_ort_dll}"
+        IMPORTED_IMPLIB               "${_ort_lib}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_ort_inc}")
+    file(GLOB _ort_deploy "${_ort_lib_dir}/onnxruntime*.dll")
+    set(ONNXRUNTIME_SHARED_LIBS "${_ort_deploy}" CACHE INTERNAL "ONNX Runtime shared libs to deploy")
+    message(STATUS "ONNX Runtime: ${_ort_dll} (implib: ${_ort_lib})")
+else()
+    set_target_properties(onnxruntime::onnxruntime PROPERTIES
+        IMPORTED_LOCATION             "${_ort_lib}"
+        INTERFACE_INCLUDE_DIRECTORIES "${_ort_inc}")
+    file(GLOB _ort_deploy "${_ort_lib_dir}/libonnxruntime*.so*")
+    set(ONNXRUNTIME_SHARED_LIBS "${_ort_deploy}" CACHE INTERNAL "ONNX Runtime shared libs to deploy")
+    message(STATUS "ONNX Runtime: ${_ort_lib}")
+endif()
