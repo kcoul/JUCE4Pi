@@ -794,7 +794,7 @@ def add_s07_recap_adcx23(prs):
             ("The Philosophy",
              "Pure R&D belongs on the host: no target hardware, no cross-compilation, no embedded constraints"),
             ("The Lesson",
-             "The further towards Research on the R&D spectrum, the more premature target work costs in friction"),
+             "If leaning towards Research on the R&D spectrum, premature target work costs more in friction"),
             ("Coming in Future Talk",
              "NeuralPlayer didn't stop here — a future talk will reveal where this project went next"),
         ],
@@ -815,9 +815,9 @@ def add_s09_qnx_everywhere(prs):
         [
             "Elk Audio OS already runs headless JUCE on a real-time OS — "
             "that part is solved",
-            "JUCE with its full module set now runs on QNX",
-            "SurgeXT on Pi 4/5 running QNX — a great completeness test",
-            "The port is the foundation — everything else in this talk builds on it",
+            "JUCE with full module set now runs on QNX - including GUI modules",
+            "SurgeXT on Pi 4/5 running QNX served as a great stress test",
+            "Work ongoing to improve OpenGL framerate - watch JUCE4Pi repo for updates",
         ],
     )
     # QNX Everywhere logo lockup — bottom-left, flush with content text (1058×204, ratio ~5.18:1)
@@ -841,7 +841,7 @@ def add_s10_build_targets(prs):
 
     lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "What We're Building")
+    set_ph(slide, 0, "Build Target Matrix")
 
     TOP       = 1.35
     HDR_H     = 0.52
@@ -1050,9 +1050,8 @@ def add_s13_tracktion_engine(prs):
         [
             "\"Why You Shouldn't Write a DAW\" — "
             "David Rowland, ADC23 — exactly how we're thinking about this",
-            "No MIDI on QNX? OSC over a network cable is a closer protocol fit "
-            "to automotive data buses than MIDI ever was",
-            "OSC is then a placeholder for real automotive data streams like VIN",
+            "No MIDI on QNX? OSC over UDP closer protocol fit to automotive data buses than MIDI anyway",
+            "OSC as a surrogate for real automotive data streams like CAN, VIN, etc.",
         ],
     )
     add_label(
@@ -1268,9 +1267,9 @@ def add_s17_qnx_hailo_status(prs):
         slide.shapes.add_picture(img2, Inches(6.98), Inches(IMG_Y), width=Inches(IMG_W))
 
     add_label(slide, 0.40, 7.08, 12.60, 0.26,
-              "[1] PhyAI Foundation — QNX vs PREEMPT_RT Linux MobileNetv1 Benchmark  (click to open)",
+              "[1] PhyAI Foundation — QNX vs PREEMPT_RT Linux MobileNetv1 Benchmark  (publication forthcoming)",
               GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
-              url="Whitepaper_PhyAI_Foundaation_QNX_MobileNetv1.pdf")
+              url="")
 
     return slide
 
@@ -1283,7 +1282,7 @@ def add_s18_npu_speed_result(prs):
     set_content_ph(slide, 1,
         "Whisper on Target CPU — baseline",
         [
-            "Transcription latency: ~3 seconds per command",
+            "Transcription latency: ~3 seconds per command (single-core) - too slow!",
             "RPi5 ARM core peak/median load less predictable",
             "SurgeXT audio competes for the same cores",
             "Contention could cause artifacts at lower buffer sizes",
@@ -1292,10 +1291,10 @@ def add_s18_npu_speed_result(prs):
     set_content_ph(slide, 2,
         "Whisper on Hailo 10-H",
         [
-            "Transcription latency: ~300 milliseconds per command",
-            "CPU load deterministic as before",
-            "Relative to number of active voices",
-            "Lowest buffer size RPi5 is capable of once again possible",
+            "Transcription latency: ~300 milliseconds per command (no optimization)",
+            "UX now within realm of usability for intended application",
+            "CPU load predictable again, relative to number of active voices",
+            "Lowest buffer size RPi5 capable of once again possible",
         ],
     )
     return slide
@@ -1337,21 +1336,21 @@ def add_s21_midi_osc_features(prs):
     slide = prs.slides.add_slide(lyt)
     set_ph(slide, 0, "Bridge: MIDI → OSC Feature Set")
     set_content_ph(slide, 1,
-        "Notes & Expressive Control",
+        "Initial Testing",
         [
             "Note On/Off + velocity → /mnote/{on|off}",
-            "Pitch bend → /pbend  ·  aftertouch → /chan_at",
-            "CCs → /cc/N  (full 128-CC configurable mapping)",
-            "Note expressions → /ne/{pitch|volume|pan|timbre|pressure}",
+            "8-control CC macro banks",
+            "X/Y touchpad",
+            "Patch/Bank change messages",
         ],
     )
     set_content_ph(slide, 2,
-        "Patch Navigation",
+        "Towards GENISYS",
         [
-            "Bank + Program Change → /patch/load",
-            "Increment / decrement → /patch/{incr|decr}",
-            "Category step → /patch/{incr|decr}_category",
-            "All Notes Off → /allnotesoff",
+            "MIDI Learn for any OSC destination",
+            "Prototype 'Studio Builder' wizard with available controllers",
+            "",
+            "",
         ],
     )
     return slide
