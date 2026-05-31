@@ -132,8 +132,14 @@ def set_content_ph(slide, idx, header, items):
             for item in items:
                 p2 = tf.add_paragraph()
                 p2.level = 2     # 14 pt + red-square bullet from master
-                run2 = p2.add_run()
-                run2.text = item
+                parts = item.split('\n')
+                for i, part in enumerate(parts):
+                    if i > 0:
+                        from pptx.oxml.ns import qn as _qn
+                        import lxml.etree as _etree
+                        _etree.SubElement(p2._p, _qn('a:br'))
+                    run2 = p2.add_run()
+                    run2.text = part
             return
 
 
@@ -341,7 +347,7 @@ def _add_support_card(slide, x, y, w, h, step, title, subtitle, body_lines, acce
     card.line.width = Pt(0.75)
 
     badge = slide.shapes.add_shape(
-        ROUNDED_RECTANGLE, Inches(x + 0.12), Inches(y + 0.14), Inches(0.52), Inches(0.46)
+        ROUNDED_RECTANGLE, Inches(x + 0.22), Inches(y + 0.16), Inches(0.40), Inches(0.38)
     )
     badge.fill.solid()
     badge.fill.fore_color.rgb = accent
@@ -353,10 +359,10 @@ def _add_support_card(slide, x, y, w, h, step, title, subtitle, body_lines, acce
     run = p.add_run()
     run.text = str(step)
     run.font.name = "Onest SemiBold"
-    run.font.size = Pt(14)
+    run.font.size = Pt(12)
     run.font.color.rgb = WHITE
 
-    add_label(slide, x + 0.72, y + 0.22, w - 0.84, 0.24,
+    add_label(slide, x + 0.70, y + 0.22, w - 0.82, 0.24,
               f"STEP {step}", GRAY1, font_size=7.5, align=PP_ALIGN.LEFT, bold=True)
 
     txb = slide.shapes.add_textbox(Inches(x + 0.16), Inches(y + 0.82),
@@ -622,7 +628,7 @@ def add_s01_title(prs):
     return slide
 
 
-def add_s03_agenda(prs):
+def add_s02_agenda(prs):
     """
     Agenda as a borderless 6×2 table on 'Only Title' canvas.
     Col 0: "Section X." in QNX red, right-aligned (narrow)
@@ -669,7 +675,7 @@ def add_s03_agenda(prs):
     return slide
 
 
-def add_s04_journey(prs):
+def add_s03_journey(prs):
     """
     S1.0 — Full development journey: JUCE port → NPU research → Bridge workbench
     → Dual-Pi evaluation → Production split (DataBridge / VREngine / GENISYS).
@@ -761,51 +767,51 @@ def add_s04_journey(prs):
     return slide
 
 
-def add_s05_divider_s1(prs):
+def add_s04_divider_s1(prs):
     return add_divider(prs, 1, "The Story So Far")
 
 
-def add_s06_recap_adc21(prs):
+def add_s05_recap_adc21(prs):
     return add_quadrant_slide(
         prs,
         title="Recap",
         center_label="ADC'21",
         quadrants=[
             ("IDE on Target",
-             "For small early projects, mount the RPi filesystem over SSH and compile directly on-device — no cross-compilation needed"),
+             "When starting out, connect the IDE to target filesystem and compile directly on-device — no cross-compilation needed"),
             ("GPIO & pigpio",
              "Hands-on GPIO examples: reading a potentiometer in C with the pigpio library"),
             ("C / C++ Interop",
-             "Mapping C++ member functions to C function pointers via a Callback<> template — required to pass class methods into C APIs like pigpio"),
+             "Mapping C++ member functions to C function pointers via a Callback<> template — required to bind C functions to C++ class methods"),
             ("Start Small",
-             "Many small programs beats one ambitious project when learning embedded basics"),
+             "Many small programs better than large ambitious project when learning embedded basics"),
         ],
     )
 
 
-def add_s07_recap_adcx23(prs):
+def add_s06_recap_adcx23(prs):
     return add_quadrant_slide(
         prs,
         title="Recap",
         center_label="ADCx'23",
         quadrants=[
             ("The Project",
-             "NeuralPlayer — a host-side pipeline combining Stem Separation and Audio-to-MIDI conversion models"),
+             "NeuralPlayer — AI-enhanced music player combining Stem Separation and Audio-to-MIDI conversion models"),
             ("The Philosophy",
              "Pure R&D belongs on the host: no target hardware, no cross-compilation, no embedded constraints"),
-            ("The Lesson",
-             "If leaning towards Research on the R&D spectrum, premature target work costs more in friction"),
+            ("Optimize for Target (not Host)",
+             "Move to target only once project is ready for optimization"),
             ("Coming in Future Talk",
-             "NeuralPlayer didn't stop here — a future talk will reveal where this project went next"),
+             "NeuralPlayer didn't stop here — next talk will reveal the evolution of this project"),
         ],
     )
 
 
-def add_s08_divider_s2(prs):
+def add_s07_divider_s2(prs):
     return add_divider(prs, 2, "JUCE on QNX")
 
 
-def add_s09_qnx_everywhere(prs):
+def add_s08_qnx_everywhere(prs):
     """S2.1 — QNX Everywhere initiative: JUCE as a natural porting target."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -817,7 +823,7 @@ def add_s09_qnx_everywhere(prs):
             "that part is solved",
             "JUCE with full module set now runs on QNX - including GUI modules",
             "SurgeXT on Pi 4/5 running QNX served as a great stress test",
-            "Work ongoing to improve OpenGL framerate - watch JUCE4Pi repo for updates",
+            "Work ongoing to improve OpenGL framerate -\nwatch JUCE4Pi repo for updates",
         ],
     )
     # QNX Everywhere logo lockup — bottom-left, flush with content text (1058×204, ratio ~5.18:1)
@@ -834,7 +840,7 @@ def add_s09_qnx_everywhere(prs):
     return slide
 
 
-def add_s10_build_targets(prs):
+def add_s09_build_targets(prs):
     """S2.2 — Build target ecosystem: QNX/Pi4, Ubuntu/Pi5, Host."""
     import lxml.etree as _etree
     from pptx.oxml.ns import qn as _qn
@@ -903,10 +909,74 @@ def add_s10_build_targets(prs):
         te.set("w", "sm")
         te.set("len", "sm")
 
+    # ── Bottom strip: scripted build / deploy pattern ─────────────────────────
+    # geometry — all defined up-front so label widths can reference them
+    SEP_Y   = 5.45
+    STRIP_Y = 6.20
+    S_H     = 0.40   # script / cmd box height
+    T_H     = 0.32   # toolchain box height
+    T_GAP   = 0.10   # gap between the two toolchain boxes
+    S_W     = 1.55   # build.sh / deploy.py box width
+    RX      = 4.70   # right section left edge
+    CMD_W   = 2.60
+    TC_W    = 3.90
+    FORK_X  = RX + CMD_W + 0.22
+    TC_X    = FORK_X + 0.26
+    CMD_Y   = STRIP_Y
+    CMD_MID = CMD_Y + S_H / 2
+    T_Y1    = CMD_MID - T_H - T_GAP / 2
+    T_Y2    = CMD_MID + T_GAP / 2
+    mid_cmd = CMD_MID
+    mid_t1  = T_Y1 + T_H / 2
+    mid_t2  = T_Y2 + T_H / 2
+
+    L_X     = 0.35
+    L_W     = 2 * S_W + 0.46          # span of build.sh → deploy.py
+    R_W     = TC_X + TC_W - RX        # span of cmd box → toolchain boxes
+
+    sep = slide.shapes.add_connector(
+        MSO_CONNECTOR_TYPE.STRAIGHT,
+        Inches(0.35), Inches(SEP_Y), Inches(12.98), Inches(SEP_Y))
+    sep.line.color.rgb = GRAY3
+    sep.line.width = Pt(0.5)
+
+    # ── Left: build.sh → deploy.py ──────────────────────────────────────────
+    add_label(slide, L_X, SEP_Y + 0.06, L_W, 0.18,
+              "Every target includes:", GRAY1, font_size=7.5, bold=True)
+    add_node(slide, L_X, STRIP_Y, S_W, S_H,
+             ["build.sh"], DARK1, text_color=RED, font_size=10)
+    add_arrow(slide, L_X + S_W + 0.10, STRIP_Y + (S_H - 0.18) / 2, 0.26, 0.18, GRAY1)
+    add_node(slide, L_X + S_W + 0.46, STRIP_Y, S_W, S_H,
+             ["deploy.py"], DARK1, text_color=GRAY1, font_size=10)
+
+    # ── Right: --target forks to the appropriate toolchain ──────────────────
+    add_label(slide, RX, SEP_Y + 0.06, R_W, 0.18,
+              "Multi-arch targets pass  --target <target>  to select the toolchain:",
+              GRAY1, font_size=7.5, bold=True)
+    add_node(slide, RX, CMD_Y, CMD_W, S_H,
+             ["./build.sh --target <target>"], DARK1, text_color=RED, font_size=9.5)
+
+    def _fseg(x1, y1, x2, y2):
+        c = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            Inches(x1), Inches(y1), Inches(x2), Inches(y2))
+        c.line.color.rgb = GRAY1
+        c.line.width = Pt(0.75)
+
+    _fseg(RX + CMD_W, mid_cmd, FORK_X, mid_cmd)   # cmd → fork point
+    _fseg(FORK_X, mid_t1, FORK_X, mid_t2)          # vertical bar
+    _fseg(FORK_X, mid_t1, TC_X,   mid_t1)          # → linux
+    _fseg(FORK_X, mid_t2, TC_X,   mid_t2)          # → qnx
+
+    add_node(slide, TC_X, T_Y1, TC_W, T_H,
+             ["linux  ·  aarch64-linux GCC"], DARK1, text_color=GRAY1, font_size=9.5)
+    add_node(slide, TC_X, T_Y2, TC_W, T_H,
+             ["qnx  ·  aarch64 QNX SDK"], DARK1, text_color=RED2, font_size=9.5)
+
     return slide
 
 
-def add_s11_juce_porting_lessons(prs):
+def add_s10_juce_porting_lessons(prs):
     """S2.3 — What was quick vs what was genuinely hard in the JUCE port."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -932,7 +1002,7 @@ def add_s11_juce_porting_lessons(prs):
     return slide
 
 
-def add_s12_screen_framework(prs):
+def add_s11_screen_framework(prs):
     """
     S2.4 — Architecture diagram: how JUCE connects to the QNX Screen Framework.
 
@@ -963,12 +1033,12 @@ def add_s12_screen_framework(prs):
         c.line.color.rgb = GRAY3
         c.line.width = Pt(0.5)
 
-    add_label(slide, 0.68, 1.70, 5.0, 0.18,
+    add_label(slide, COL_X[0], 1.70, NW, 0.18,
               "JUCE APPLICATION", GRAY1, font_size=7.5, bold=True)
     add_label(slide, 0.68, 2.98, 8.5, 0.18,
               "QNX PORT  —  juce_Windowing_qnx.cpp  +  juce_OpenGL_qnx.h",
               RED, font_size=7.5, bold=True)
-    add_label(slide, 0.68, 4.31, 4.5, 0.18,
+    add_label(slide, COL_X[0], 4.31, NW, 0.18,
               "QNX SCREEN FRAMEWORK", GREEN, font_size=7.5, bold=True)
     add_label(slide, COL_X[2], 4.31, NW, 0.18,
               "EGL / OpenGL ES", PURPLE, font_size=7.5, bold=True)
@@ -1032,7 +1102,7 @@ def add_s12_screen_framework(prs):
               "createPeer()", GRAY1, font_size=7)
     add_label(slide, CX[2] - 0.80, ROW_Y[0] + NH[0] + 0.02, 1.60, 0.20,
               "attaches to", GRAY1, font_size=7)
-    add_label(slide, COL_X[0] + NW + 0.02, mid_r2 - 0.22, 0.90, 0.20,
+    add_label(slide, COL_X[0] + NW + 0.10, mid_r2 - 0.10, 0.90, 0.20,
               "register", GRAY1, font_size=6.5)
     add_label(slide, CX[2] - 1.10, ROW_Y[1] + NH[1] + 0.03, 2.20, 0.20,
               "↓ getNativeHandle() → screen_window_t", PURPLE, font_size=7)
@@ -1040,7 +1110,7 @@ def add_s12_screen_framework(prs):
     return slide
 
 
-def add_s13_tracktion_engine(prs):
+def add_s12_tracktion_engine(prs):
     """S2.6 — Tracktion Engine on QNX: hinting at internal automotive eval use."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -1063,11 +1133,25 @@ def add_s13_tracktion_engine(prs):
     return slide
 
 
-def add_s14_divider_s3(prs):
-    return add_divider(prs, 3, "Audio on the NPU")
+def add_s13_divider_s3(prs):
+    slide = add_divider(prs, 3, "Audio on the NPU")
+    hailo_img = os.path.join(SLIDES_DIR, "Hailo10H.jpg")
+    if os.path.exists(hailo_img):
+        img_w_px, img_h_px = _image_dims(hailo_img)
+        IMG_W_IN = 4.0
+        LEFT_IN  = 0.68
+        MAX_BOT  = 6.8
+        if img_w_px and img_h_px:
+            natural_h = IMG_W_IN * img_h_px / img_w_px
+            top_in    = MAX_BOT - natural_h
+            slide.shapes.add_picture(
+                hailo_img, Inches(LEFT_IN), Inches(top_in), Inches(IMG_W_IN))
+        else:
+            slide.shapes.add_picture(hailo_img, Inches(LEFT_IN), Inches(3.5), Inches(IMG_W_IN))
+    return slide
 
 
-def add_s15_npu_pros_cons(prs):
+def add_s14_npu_pros_cons(prs):
     """
     S3.1 — Audio on the NPU: Pros & Cons.
     Adapted from QNX Slide Library slide 46 (Gain & Loss layout).
@@ -1162,7 +1246,7 @@ def add_s15_npu_pros_cons(prs):
     return slide
 
 
-def add_s16_hailo_hardware(prs):
+def add_s15_hailo_hardware(prs):
     """
     S3.2 — NPU bring-up: three steps from Windows CPU-only → Ubuntu NPU dev
     → RPi5 target deployment.  A return arrow shows that Hailo support was
@@ -1244,7 +1328,7 @@ def add_s16_hailo_hardware(prs):
     return slide
 
 
-def add_s17_qnx_hailo_status(prs):
+def add_s16_qnx_hailo_status(prs):
     """S3.3 — QNX + Hailo status; benchmark comparison vs PREEMPT_RT Linux."""
     lyt   = get_layout(prs, 1, "Only Title")
     slide = prs.slides.add_slide(lyt)
@@ -1274,7 +1358,7 @@ def add_s17_qnx_hailo_status(prs):
     return slide
 
 
-def add_s18_npu_speed_result(prs):
+def add_s17_npu_speed_result(prs):
     """S3.3 — The headline result: CPU vs Hailo 10-H on Whisper inference."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1300,11 +1384,11 @@ def add_s18_npu_speed_result(prs):
     return slide
 
 
-def add_s19_divider_s4(prs):
+def add_s18_divider_s4(prs):
     return add_divider(prs, 4, "Developing Host-First")
 
 
-def add_s20_whispercpp_testbench(prs):
+def add_s19_whispercpp_testbench(prs):
     """S4.1 — SurgeMIDIToOSCBridge: one combined tool serving two distinct roles."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1327,10 +1411,27 @@ def add_s20_whispercpp_testbench(prs):
             "One tool, both roles — convenience, not architecture",
         ],
     )
+    surge_img = os.path.join(SLIDES_DIR, "SurgeMidiToOscBridge.png")
+    if os.path.exists(surge_img):
+        img_w_px, img_h_px = _image_dims(surge_img)
+        IMG_W_IN = 4.5
+        TOP_IN   = 4.3
+        MAX_BOT  = 7.35
+        img_left = int((Inches(13.33) - Inches(IMG_W_IN)) / 2)
+        if img_w_px and img_h_px:
+            natural_h = IMG_W_IN * img_h_px / img_w_px
+            display_h = min(natural_h, MAX_BOT - TOP_IN)
+            pic = slide.shapes.add_picture(
+                surge_img, img_left, Inches(TOP_IN),
+                Inches(IMG_W_IN), Inches(display_h))
+            if display_h < natural_h:
+                pic.crop_bottom = 1.0 - display_h / natural_h
+        else:
+            slide.shapes.add_picture(surge_img, img_left, Inches(TOP_IN), Inches(IMG_W_IN))
     return slide
 
 
-def add_s21_midi_osc_features(prs):
+def add_s20_midi_osc_features(prs):
     """S4.3 — MIDI mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1356,7 +1457,7 @@ def add_s21_midi_osc_features(prs):
     return slide
 
 
-def add_s22_voice_api_features(prs):
+def add_s21_voice_api_features(prs):
     """S4.4 — Voice API mode of the Bridge: mapped to the real SurgeXT OSC spec."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1382,11 +1483,11 @@ def add_s22_voice_api_features(prs):
     return slide
 
 
-def add_s23_divider_s5(prs):
+def add_s22_divider_s5(prs):
     return add_divider(prs, 5, "Getting to the Target")
 
 
-def add_s24_midi_osc_bridge(prs):
+def add_s23_midi_osc_bridge(prs):
     """
     S5.1 — The Bridge as the vehicle that 'got to the target'.
     Host-side NPU access + 3 identical chips = incremental dev without
@@ -1423,7 +1524,7 @@ def add_s24_midi_osc_bridge(prs):
     return slide
 
 
-def add_s25_host_target_support_matrix(prs):
+def add_s24_host_target_support_matrix(prs):
     """
     S5.2 — Adapted from QNX Slide Library slide 41: four process steps.
     Shows the practical path for host-first development across Linux and QNX.
@@ -1507,7 +1608,7 @@ def _add_voice_bypass(slide, node_x, Y_NODE, NH):
     _seg(x_to,   Y_BELOW, x_to,   Y_NODE + NH, arrowhead=True)
 
 
-def add_s26_signal_chain(prs):
+def add_s25_signal_chain(prs):
     """
     S5.3 — Full system signal chain: HOST nodes left, TARGET nodes right,
     separated by a purple boundary line.
@@ -1560,7 +1661,7 @@ def add_s26_signal_chain(prs):
     return slide
 
 
-def add_s27_signal_chain_full_target(prs):
+def add_s26_signal_chain_full_target(prs):
     """
     S5.5 — Same six nodes as s23, but ALL running on the target.
     No HOST/TARGET split — the boundary line is gone.
@@ -1628,40 +1729,6 @@ def add_s33_full_demo_video(prs):
     )
 
 
-def add_s02_dedication(prs):
-    """
-    Dedication to Jason Dasent — music producer and accessibility consultant
-    whose vision, sparked by ADC21, is what this project is reaching for.
-    """
-    lyt   = get_layout(prs, 1, "Statement")
-    slide = prs.slides.add_slide(lyt)
-    set_ph(slide, 0, "Dedicated to Jason Dasent")
-    set_ph(slide, 12, (
-        "Jason Dasent attended ADC21 and asked: can a Raspberry Pi\n"
-        "issue voice commands in the studio?\n"
-        "\n"
-        "It took five years. This project is the beginning of that answer.\n"
-        "\n"
-        "The FOSS community is invited to help make his dream a reality."
-    ))
-    add_label(
-        slide, 0.68, 6.78, 4.0, 0.22,
-        "jasondasent.com",
-        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
-        url="https://www.jasondasent.com/",
-    )
-    photo = os.path.join(SLIDES_DIR, "JasonDasent.jpg")
-    if os.path.exists(photo):
-        w_px, h_px = _image_dims(photo)
-        img_w = Inches(3.20)
-        img_h = int(img_w * h_px / w_px) if w_px else Inches(3.20)
-        slide.shapes.add_picture(photo,
-            Inches(0.68),
-            Inches(6.58) - img_h,
-            img_w, img_h)
-    return slide
-
-
 def add_s32_contact(prs):
     """Final slide — Contact card layout."""
     lyt   = get_layout(prs, 1, "Contact")
@@ -1689,23 +1756,14 @@ def add_s32_contact(prs):
 
         p3 = tf.add_paragraph()
         p3.level = 2
-        p3.add_run().text = "Phone\t+1 604 319 1613"
+        p3.add_run().text = "GitHub\t"
+        r_gh = p3.add_run()
+        r_gh.text = "https://github.com/kcoul"
+        r_gh.hyperlink.address = "https://github.com/kcoul"
 
         p4 = tf.add_paragraph()
         p4.level = 2
-        p4.add_run().text = "E-Mail\tkicoulter@qnx.com"
-
-        p5 = tf.add_paragraph()
-        p5.level = 2
-        p5.add_run().text = "201-8331 Eastlake Drive"
-
-        p6 = tf.add_paragraph()
-        p6.level = 2
-        p6.add_run().text = "Burnaby  BC  V5A 4W2"
-
-        p7 = tf.add_paragraph()
-        p7.level = 2
-        p7.add_run().text = "Canada"
+        p4.add_run().text = "E-Mail\tkieran.coulter@gmail.com"
 
         break
 
@@ -1742,11 +1800,11 @@ def add_s32_contact(prs):
 
 # ── Section 6 slides s29 – s35 ────────────────────────────────────────────────
 
-def add_s28_divider_s6(prs):
+def add_s27_divider_s6(prs):
     return add_divider(prs, 6, "From R&D to Production")
 
 
-def add_s29_databridge_demo(prs):
+def add_s28_databridge_demo(prs):
     """S6.1 — DataBridge: a learning exercise and workaround for QNX's no-MIDI constraint."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1769,11 +1827,28 @@ def add_s29_databridge_demo(prs):
             "Understand generalization of message protocol adapters",
         ],
     )
+    databridge_img = os.path.join(SLIDES_DIR, "DataBridge.png")
+    if os.path.exists(databridge_img):
+        img_w_px, img_h_px = _image_dims(databridge_img)
+        IMG_W_IN  = 4.5
+        TOP_IN    = 4.3
+        MAX_BOT   = 7.35   # leave a small bottom margin
+        img_left  = int((Inches(13.33) - Inches(IMG_W_IN)) / 2)
+        if img_w_px and img_h_px:
+            natural_h = IMG_W_IN * img_h_px / img_w_px
+            display_h = min(natural_h, MAX_BOT - TOP_IN)
+            pic = slide.shapes.add_picture(
+                databridge_img, img_left, Inches(TOP_IN),
+                Inches(IMG_W_IN), Inches(display_h))
+            if display_h < natural_h:
+                pic.crop_bottom = 1.0 - display_h / natural_h
+        else:
+            slide.shapes.add_picture(databridge_img, img_left, Inches(TOP_IN), Inches(IMG_W_IN))
     return slide
 
 
 
-def add_s30_vrengine_demo(prs):
+def add_s29_vrengine_demo(prs):
     """S6.3 — VREngine: voice-controlled UserPrefsPane on target."""
     lyt   = get_layout(prs, 1, "Two Contents")
     slide = prs.slides.add_slide(lyt)
@@ -1800,7 +1875,7 @@ def add_s30_vrengine_demo(prs):
 
 
 
-def add_s31_genisys_demo(prs):
+def add_s30_genisys_demo(prs):
     """S6.5 — GENISYS: both features unified in Jason Dasent's vision."""
     lyt   = get_layout(prs, 1, "One Content")
     slide = prs.slides.add_slide(lyt)
@@ -1814,9 +1889,68 @@ def add_s31_genisys_demo(prs):
             "Down the line: Intent -> Parameter Space — tweak your tracks by describing what you want",
         ],
     )
+    txb = slide.shapes.add_textbox(Inches(1.0), Inches(4.2), Inches(11.33), Inches(1.6))
+    tf  = txb.text_frame
+    tf.word_wrap = True
+    p   = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    run = p.add_run()
+    run.text = (
+        "Why don’t we use AI to build tools that help human artists and musicians "
+        "make even more art and music that actually moves our souls?"
+    )
+    run.font.name  = "Onest SemiBold"
+    run.font.size  = Pt(22)
+    run.font.color.rgb = WHITE
+
+    txb2 = slide.shapes.add_textbox(Inches(1.0), Inches(6.05), Inches(11.33), Inches(0.8))
+    tf2  = txb2.text_frame
+    tf2.word_wrap = True
+    p2   = tf2.paragraphs[0]
+    p2.alignment = PP_ALIGN.CENTER
+    run2 = p2.add_run()
+    run2.text = (
+        "Looking for more Open-Source Developers to contribute to GENISYS "
+        "— contact me to get in touch!"
+    )
+    run2.font.name  = "Onest"
+    run2.font.size  = Pt(16)
+    run2.font.color.rgb = GRAY1
     return slide
 
 
+def add_s31_dedication(prs):
+    """
+    Dedication to Jason Dasent — music producer and accessibility consultant
+    whose vision, sparked by ADC21, is what this project is reaching for.
+    """
+    lyt   = get_layout(prs, 1, "Statement")
+    slide = prs.slides.add_slide(lyt)
+    set_ph(slide, 0, "Dedicated to Jason Dasent")
+    set_ph(slide, 12, (
+        "Jason Dasent attended ADC21 and asked: can a Raspberry Pi\n"
+        "issue voice commands in the studio?\n"
+        "\n"
+        "It took five years. This project is the beginning of that answer.\n"
+        "\n"
+        "The FOSS community is invited to help make his dream a reality."
+    ))
+    add_label(
+        slide, 0.68, 6.78, 4.0, 0.22,
+        "jasondasent.com",
+        GRAY1, font_size=7.5, align=PP_ALIGN.LEFT,
+        url="https://www.jasondasent.com/",
+    )
+    photo = os.path.join(SLIDES_DIR, "JasonDasent.jpg")
+    if os.path.exists(photo):
+        w_px, h_px = _image_dims(photo)
+        img_w = Inches(3.20)
+        img_h = int(img_w * h_px / w_px) if w_px else Inches(3.20)
+        slide.shapes.add_picture(photo,
+            Inches(0.68),
+            Inches(6.58) - img_h,
+            img_w, img_h)
+    return slide
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -1825,36 +1959,36 @@ def main():
     strip_template_slides(prs)
 
     add_s01_title(prs)
-    add_s02_dedication(prs)
-    add_s03_agenda(prs)
-    add_s04_journey(prs)
-    add_s05_divider_s1(prs)
-    add_s06_recap_adc21(prs)
-    add_s07_recap_adcx23(prs)
-    add_s08_divider_s2(prs)
-    add_s09_qnx_everywhere(prs)
-    add_s10_build_targets(prs)
-    add_s11_juce_porting_lessons(prs)
-    add_s12_screen_framework(prs)
-    add_s13_tracktion_engine(prs)
-    add_s14_divider_s3(prs)
-    add_s15_npu_pros_cons(prs)
-    add_s16_hailo_hardware(prs)
-    add_s17_qnx_hailo_status(prs)
-    add_s18_npu_speed_result(prs)
-    add_s19_divider_s4(prs)
-    add_s20_whispercpp_testbench(prs)
-    add_s21_midi_osc_features(prs)
-    add_s22_voice_api_features(prs)
-    add_s23_divider_s5(prs)
-    add_s24_midi_osc_bridge(prs)
-    add_s25_host_target_support_matrix(prs)
-    add_s26_signal_chain(prs)
-    add_s27_signal_chain_full_target(prs)
-    add_s28_divider_s6(prs)
-    add_s29_databridge_demo(prs)
-    add_s30_vrengine_demo(prs)
-    add_s31_genisys_demo(prs)
+    add_s02_agenda(prs)
+    add_s03_journey(prs)
+    add_s04_divider_s1(prs)
+    add_s05_recap_adc21(prs)
+    add_s06_recap_adcx23(prs)
+    add_s07_divider_s2(prs)
+    add_s08_qnx_everywhere(prs)
+    add_s09_build_targets(prs)
+    add_s10_juce_porting_lessons(prs)
+    add_s11_screen_framework(prs)
+    add_s12_tracktion_engine(prs)
+    add_s13_divider_s3(prs)
+    add_s14_npu_pros_cons(prs)
+    add_s15_hailo_hardware(prs)
+    add_s16_qnx_hailo_status(prs)
+    add_s17_npu_speed_result(prs)
+    add_s18_divider_s4(prs)
+    add_s19_whispercpp_testbench(prs)
+    add_s20_midi_osc_features(prs)
+    add_s21_voice_api_features(prs)
+    add_s22_divider_s5(prs)
+    add_s23_midi_osc_bridge(prs)
+    add_s24_host_target_support_matrix(prs)
+    add_s25_signal_chain(prs)
+    add_s26_signal_chain_full_target(prs)
+    add_s27_divider_s6(prs)
+    add_s28_databridge_demo(prs)
+    add_s29_vrengine_demo(prs)
+    add_s30_genisys_demo(prs)
+    add_s31_dedication(prs)
     add_s32_contact(prs)
 
     prs.save(OUTPUT)
