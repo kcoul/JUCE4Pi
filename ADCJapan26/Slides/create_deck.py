@@ -999,6 +999,113 @@ def add_s10_juce_porting_lessons(prs):
             "OpenGL → secondary windows",
         ],
     )
+
+    # ── cross-compilation strip ─────────────────────────────────────────────
+    RULE_Y = 4.22
+    CARD_Y = 4.55
+    CARD_H = 1.96
+    SL, SR = 0.68, 12.65
+    GAP    = 0.65
+    CARD_W = (SR - SL - 2 * GAP) / 3   # ≈ 3.56"
+    AW, AH = 0.42, 0.22
+
+    hr = slide.shapes.add_connector(
+        MSO_CONNECTOR_TYPE.STRAIGHT,
+        Inches(SL), Inches(RULE_Y), Inches(SR), Inches(RULE_Y),
+    )
+    hr.line.color.rgb = GRAY3
+    hr.line.width = Pt(0.5)
+
+    add_label(slide, SL, RULE_Y + 0.05, 8.0, 0.22,
+              "Cross-compilation setup: aarch64 Ubuntu on WSL2 (Ubuntu Noble)",
+              GRAY1, font_size=7.5, align=PP_ALIGN.LEFT, bold=True)
+
+    steps_data = [
+        (1, "Restrict native repo", "ubuntu.sources",
+         ["Add: Architectures: amd64",
+          "Prevents apt mixing host and target libs"]),
+        (2, "Add arm64 ports", "ubuntu-arm64-ports.sources",
+         ["URIs: ports.ubuntu.com/ubuntu-ports",
+          "Architectures: arm64"]),
+        (3, "Install toolchain", "dpkg + apt",
+         ["dpkg --add-architecture arm64",
+          "apt install gcc-aarch64-linux-gnu",
+          "  g++-aarch64-linux-gnu",
+          "  libasound2-dev:arm64"]),
+    ]
+
+    for i, (step_n, title, subtitle, body) in enumerate(steps_data):
+        x = SL + i * (CARD_W + GAP)
+        card = slide.shapes.add_shape(
+            ROUNDED_RECTANGLE, Inches(x), Inches(CARD_Y), Inches(CARD_W), Inches(CARD_H)
+        )
+        card.fill.solid()
+        card.fill.fore_color.rgb = DARK1
+        card.line.color.rgb = GRAY3
+        card.line.width = Pt(0.75)
+
+        badge = slide.shapes.add_shape(
+            ROUNDED_RECTANGLE,
+            Inches(x + 0.16), Inches(CARD_Y + 0.14), Inches(0.30), Inches(0.28)
+        )
+        badge.fill.solid()
+        badge.fill.fore_color.rgb = RED
+        badge.line.fill.background()
+        btf = badge.text_frame
+        btf.vertical_anchor = MSO_ANCHOR.MIDDLE
+        bp = btf.paragraphs[0]
+        bp.alignment = PP_ALIGN.CENTER
+        br = bp.add_run()
+        br.text = str(step_n)
+        br.font.name = "Onest SemiBold"
+        br.font.size = Pt(8)
+        br.font.color.rgb = WHITE
+
+        txb = slide.shapes.add_textbox(
+            Inches(x + 0.12), Inches(CARD_Y + 0.54),
+            Inches(CARD_W - 0.24), Inches(CARD_H - 0.62)
+        )
+        tf = txb.text_frame
+        tf.word_wrap = True
+        tf.margin_left   = Inches(0.02)
+        tf.margin_right  = Inches(0.02)
+        tf.margin_top    = Inches(0.00)
+        tf.margin_bottom = Inches(0.00)
+
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.LEFT
+        r = p.add_run()
+        r.text = title
+        r.font.name = "Onest SemiBold"
+        r.font.size = Pt(11)
+        r.font.color.rgb = WHITE
+
+        p2 = tf.add_paragraph()
+        p2.alignment = PP_ALIGN.LEFT
+        r2 = p2.add_run()
+        r2.text = subtitle
+        r2.font.name = "Onest"
+        r2.font.size = Pt(8)
+        r2.font.color.rgb = RED
+
+        for line in body:
+            pb = tf.add_paragraph()
+            pb.alignment = PP_ALIGN.LEFT
+            rb = pb.add_run()
+            rb.text = line
+            rb.font.name = "Onest"
+            rb.font.size = Pt(8)
+            rb.font.color.rgb = GRAY1
+
+        if i < 2:
+            arr_x = x + CARD_W + (GAP - AW) / 2
+            arr_y = CARD_Y + (CARD_H - AH) / 2
+            add_arrow(slide, arr_x, arr_y, AW, AH, GRAY1)
+
+    add_label(slide, SL, CARD_Y + CARD_H + 0.06, SR - SL, 0.32,
+              "Check the docs folder for SurgeMIDIToOscBridge for more details",
+              WHITE, font_size=13, align=PP_ALIGN.LEFT, bold=True)
+
     return slide
 
 
