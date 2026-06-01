@@ -42,9 +42,9 @@ xcuserdata
 # ADCJapan26 slides
 # *.potx — branded QNX templates, always private, never remove this line
 ADCJapan26/Slides/*.potx
-# *.pptx — draft deck; when the final version is ready to publish, comment out
-#           this line, then: git add ADCJapan26/Slides/<FinalDeckName>.pptx
-ADCJapan26/Slides/*.pptx
+# Final deck is now published for posterity; keep the branded QNX slide
+# library private (it's a template asset, like the .potx above).
+ADCJapan26/Slides/QNX_Slide_Library_V09.pptx
 ADCJapan26/Slides/placeholder.mp4
 
 .claude/settings.local.json
