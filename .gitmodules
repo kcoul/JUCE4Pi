@@ -8,4 +8,8 @@
 [submodule "libs/JUCE"]
 	path = libs/JUCE
 	url = https://github.com/kcoul/JUCE.git
-	branch = qnx-ports
+	branch = port/juce9
+[submodule "libs/tracktion_engine"]
+	path = libs/tracktion_engine
+	url = https://github.com/kcoul/tracktion_engine.git
+	branch = port/juce9
